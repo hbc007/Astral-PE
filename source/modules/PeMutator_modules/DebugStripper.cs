@@ -25,7 +25,7 @@ namespace AstralPE.Obfuscator.Modules {
             if (optStart + 0x60 + 16 * 8 > raw.Length)
                 throw new Exception("Optional Header is corrupted or incomplete.");
 
-            // 1. Clear the Debug Directory if present
+            // Clear the Debug Directory if present
             if (pe.ImageDebugDirectory != null && pe.ImageDebugDirectory.Any()) {
                 foreach (ImageDebugDirectory? dbg in pe.ImageDebugDirectory) {
                     int dbgOffset = (int)dbg.PointerToRawData;
