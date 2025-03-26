@@ -66,7 +66,7 @@ AstralPE.exe <input.exe> -o <output.exe>
 
 ## 🧪 Example
 
-```cmds
+```cmd
 AstralPE.exe payload.exe -o payload_clean.exe
 ```
 
@@ -87,3 +87,16 @@ Build → Any packer → AstralPE → Sign / Pack → Distribute
 - Not a code obfuscator (this is a advanced PE-headers obfuscator)
 
 It’s a **surgical metadata cleaner** and **headers mutator** for post-processing protected binaries.
+
+## Before and after
+A file compiled via Microsoft Visual C++ was chosen as a sample for demonstration.
+
+> ### File analyzers go crazy.
+> ![](pics/before_and_after_1.png)
+> Scanned with **[Detect It Easy](https://github.com/horsicq/Detect-It-Easy)**.
+
+> ### Imports have become mutated.
+> ![](pics/before_and_after_2.png)
+
+> ### No debug data in PE!
+> ![](pics/before_and_after_3.png)
