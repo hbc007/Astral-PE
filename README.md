@@ -1,4 +1,5 @@
-<h1 align="center">🛰 Astral-PE</h1>
+<img src="pics/title.png" style="align: center;">
+<!-- <h1 align="center"></h1> -->
 <p align="center"><b>Post-protection structural mutator for x86/x64 PE files</b></p>
 <p align="center">Surgical header mutation for hardened binaries — bypass unpackers, break signatures, preserve execution</p>
 
