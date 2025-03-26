@@ -44,7 +44,7 @@ Astral-PE applies precise, compliant, and execution-safe mutations:
 | 📋 Version Info         | Erased from optional header                               |
 | 📁 Original Filename    | Located and zeroed in binary tail                         |
 | 🔎 Debug Info           | PDB paths wiped, Debug Directory erased                   |
-| 🚀 Entry Point Patch    | Replaces or shuffles PUSH/PROLOGUE bytes (e.g. UPX64)     |
+| 🚀 Entry Point Patch    | Replaces or shuffles PUSH/PROLOGUE bytes (e.g. UPX)       |
 | 🧪 Import Table         | DLL names mutated: case, prefix, randomized formatting    |
 | 🏷 Export Table          | Faked if absent (baits certain scanners)                  |
 | 📚 Data Directory       | All unused entries cleaned                                |
@@ -92,11 +92,13 @@ It’s a **surgical metadata cleaner** and **headers mutator** for post-processi
 A file compiled via Microsoft Visual C++ was chosen as a sample for demonstration.
 
 > ### File analyzers go crazy.
+> Scanned with **[Detect It Easy](https://github.com/horsicq/Detect-It-Easy)**. No reliable verdicts other than the heuristic analysis.
 > ![](pics/before_and_after_1.png)
-> Scanned with **[Detect It Easy](https://github.com/horsicq/Detect-It-Easy)**.
 
 > ### Imports have become mutated.
+> This makes it very difficult for all existing PE file analyzers to analyze the file.
 > ![](pics/before_and_after_2.png)
 
 > ### No debug data in PE!
+> Automatically remove references to PDB files, embedded debug information or other patterns that can simplify analysis (e.g. Rich signature)
 > ![](pics/before_and_after_3.png)
