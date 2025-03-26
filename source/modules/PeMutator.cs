@@ -45,8 +45,8 @@ namespace AstralPE.Obfuscator {
         /// </summary>
         private void RegisterModules() {
             var list = new IObfuscationModule[] {
+                new LinkerVersionInfoCleaner(),
                 new OriginalNameCleaner(),
-                new VersionInfoCleaner(),
                 new EntryPointPatcher(),
                 new PermissionsSetter(),
                 new OverlayStripper(),

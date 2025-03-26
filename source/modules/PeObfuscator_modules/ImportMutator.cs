@@ -26,13 +26,14 @@ namespace AstralPE.Obfuscator.Modules {
                 .Where(x => !string.IsNullOrEmpty(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var dllName in uniqueDlls) {
+            foreach (string dllName in uniqueDlls) {
                 string dll = dllName;
                 if (dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                     dll = dll[..^4];
 
                 string[] sep = { "./", ".\\" };
                 string prefix = sep[rnd.Next(2)];
+
                 if (rnd.Next(2) == 0)
                     prefix += sep[rnd.Next(2)];
 

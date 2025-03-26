@@ -20,7 +20,7 @@ namespace AstralPE.Obfuscator.Modules {
                 throw new InvalidPeImageException();
 
             // Locate Load Config Directory
-            var loadCfg = pe.ImageNtHeaders.OptionalHeader.DataDirectory[(int)DataDirectoryType.LoadConfig];
+            ImageDataDirectory? loadCfg = pe.ImageNtHeaders.OptionalHeader.DataDirectory[(int)DataDirectoryType.LoadConfig];
             if (loadCfg.VirtualAddress == 0 || loadCfg.Size == 0)
                 return;
 

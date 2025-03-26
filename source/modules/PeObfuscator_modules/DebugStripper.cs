@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using PeNet;
+using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
     public class DebugStripper : IObfuscationModule {
@@ -17,25 +18,38 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">Offset to section headers.</param>
         /// <param name="rnd">Random number generator (unused).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            // Sanity check: ensure DataDirectory section is within bounds
+            if (pe.ImageNtHeaders == null)
+                throw new InvalidOperationException();
+
+            // Ensure that the DataDirectory section is within bounds
             if (optStart + 0x60 + 16 * 8 > raw.Length)
                 throw new Exception("Optional Header is corrupted or incomplete.");
 
-            // Clear debug directory if available
-            if (pe.ImageDebugDirectory != null) {
+            // 1. Clear the Debug Directory if present
+            if (pe.ImageDebugDirectory != null && pe.ImageDebugDirectory.Any()) {
                 foreach (var dbg in pe.ImageDebugDirectory) {
                     int dbgOffset = (int)dbg.PointerToRawData;
                     int dbgSize = (int)dbg.SizeOfData;
 
+                    // Make sure we clear within bounds of the raw file
                     if (dbgOffset + dbgSize <= raw.Length)
                         Array.Clear(raw, dbgOffset, dbgSize);
                 }
             }
 
-            // Clear debug entry from DataDirectory
+            // Clear the Debug entry in DataDirectory (debug pointer in IMAGE_OPTIONAL_HEADER)
+            // The Debug entry is located in the DataDirectory at index IMAGE_DIRECTORY_ENTRY_DEBUG
             int debugDirOffset = optStart + 0x60 + ((int)PeNet.Header.Pe.DataDirectoryType.Debug * 8);
-            if (debugDirOffset + 8 <= raw.Length)
-                Array.Clear(raw, debugDirOffset, 8);
+
+            // Ensure we're within bounds and clear the entry (pointer + size)
+            if (debugDirOffset + 8 <= raw.Length) {
+                Array.Clear(raw, debugDirOffset, 8); // Clear both the pointer and the size of the Debug Directory
+            }
+
+            // Now, we explicitly set the DataDirectory Debug entry to zero (in the header)
+            ImageDataDirectory? dataDirectoryEntry = pe.ImageNtHeaders.OptionalHeader.DataDirectory[(int)PeNet.Header.Pe.DataDirectoryType.Debug];
+            dataDirectoryEntry.VirtualAddress = 0;
+            dataDirectoryEntry.Size = 0;
 
             // Wipe all embedded .pdb paths from binary
             ReadOnlySpan<byte> marker = new byte[] { (byte)'.', (byte)'p', (byte)'d', (byte)'b', 0 };
@@ -55,12 +69,12 @@ namespace AstralPE.Obfuscator.Modules {
             if (pe.ImageNtHeaders == null || pe.ImageSectionHeaders == null)
                 throw new InvalidOperationException();
 
-            var exportDir = pe.ImageNtHeaders.OptionalHeader.DataDirectory[0];
+            ImageDataDirectory? exportDir = pe.ImageNtHeaders.OptionalHeader.DataDirectory[0];
             if (exportDir.VirtualAddress == 0 || exportDir.Size == 0)
                 return;
 
-            uint expStart = exportDir.VirtualAddress;
-            uint expEnd = expStart + exportDir.Size;
+            uint expStart = exportDir.VirtualAddress,
+                 expEnd = expStart + exportDir.Size;
 
             byte[] target = Encoding.ASCII.GetBytes("DotNetRuntimeDebugHeader\0");
 

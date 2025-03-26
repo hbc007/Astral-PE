@@ -2,11 +2,10 @@ using System;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class VersionInfoCleaner : IObfuscationModule {
+    public class LinkerVersionInfoCleaner : IObfuscationModule {
 
         /// <summary>
-        /// Clears version info from the PE Optional Header.
-        /// This targets the version resource section to sanitize metadata.
+        /// Clears linker version info from the PE Optional Header.
         /// </summary>
         /// <param name="raw">The raw byte array of the PE file.</param>
         /// <param name="pe">Parsed PE structure containing headers and sections.</param>
