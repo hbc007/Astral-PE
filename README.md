@@ -1,6 +1,6 @@
 <img src="pics/title.png" style="align: center;">
-<!-- <h1 align="center"></h1> -->
-<h2 align="center"><b>A powerfull mutator for x86/x64 PE files</b></h2>
+
+---
 
 Astral-PE is a **low-level mutator** (headers obfuscator and patcher) for Windows PE files (`.exe`, `.dll`) that rewrites structural metadata after protection — **without breaking execution**.
 
