@@ -64,7 +64,7 @@ namespace AstralPE.Obfuscator {
                 new SectionNameWiper() // Must be last
             };
 
-            foreach (var module in list)
+            foreach (IObfuscationModule? module in list)
                 modules.Add(module);
         }
 
@@ -79,7 +79,7 @@ namespace AstralPE.Obfuscator {
                 Environment.Exit(1);
             }
 
-            foreach (var module in modules) {
+            foreach (IObfuscationModule? module in modules) {
                 try {
                     module.Apply(ref raw, pe, e_lfanew, optStart, sectionTableOffset, rnd);
                 } catch (Exception ex) {
