@@ -17,7 +17,7 @@ You’ve protected a binary — but public unpackers or YARA rules still target 
 > - Break static unpacker logic
 > - Invalidate reverse-engineering signatures
 > - Disrupt clustering in sandboxes
-> - Strip metadata, overlays, debug traces
+> - Strip metadata, overlays (only if file is signed), debug traces...
 
 > ### 🤩 **Perfect for:**
 > - For packed/protected builds (e.g. legacy Enigma)
@@ -36,7 +36,7 @@ Astral-PE applies precise, compliant, and execution-safe mutations:
 | 🧠 Rich Header          | Fully removed — breaks toolchain fingerprinting           |
 | 📜 Section Names        | Wiped (`.text`, `.rsrc`, etc. → null)                     |
 | 📎 Checksum              | Reset to zero                                             |
-| 📦 Overlay              | Stripped if signed junk detected                          |
+| 📦 Overlay              | Stripped if file was signed                               |
 | 🧵 TLS Directory        | Removed if unused                                         |
 | ⚙ Load Config           | Deleted (if CFG not present)                              |
 | 🧬 Relocations          | `.reloc` section removed if not required                  |
