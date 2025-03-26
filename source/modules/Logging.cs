@@ -34,7 +34,7 @@ public static class Logging {
                     string text = parts[i].Substring(close + 1);
 
                     // Try to parse the color name to a valid ConsoleColor
-                    if (Enum.TryParse<ConsoleColor>(colorName, true, out var color)) {
+                    if (Enum.TryParse<ConsoleColor>(colorName, true, out ConsoleColor color)) {
                         // Set the console text color
                         Console.ForegroundColor = color;
                     }
