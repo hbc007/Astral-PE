@@ -1,11 +1,8 @@
 <img src="pics/title.png" style="align: center;">
 <!-- <h1 align="center"></h1> -->
-<p align="center"><b>Post-protection structural mutator for x86/x64 PE files</b></p>
-<p align="center">Surgical header mutation for hardened binaries — bypass unpackers, break signatures, preserve execution</p>
+<h2 align="center"><b>A powerfull mutator for x86/x64 PE files</b></h2>
 
----
-
-Astral-PE is a **low-level mutator** for Windows PE files (`.exe`, `.dll`) that rewrites structural metadata after protection — **without breaking execution**.
+Astral-PE is a **low-level mutator** (headers obfuscator and patcher) for Windows PE files (`.exe`, `.dll`) that rewrites structural metadata after protection — **without breaking execution**.
 
 It **does not pack, encrypt or inject**. Instead, it mutates low-hanging but critical structures like timestamps, headers, section flags, debug info, import/export names, and more.
 
@@ -16,18 +13,19 @@ It **does not pack, encrypt or inject**. Instead, it mutates low-hanging but cri
 
 You’ve protected a binary — but public unpackers or YARA rules still target its **unchanged structure**.
 
-> ### Use Astral-PE as a **post-processing step** to:
+> ### 👨🏼‍💻 Use Astral-PE as a **post-processing step** to:
 > - Prevent automated unpacking
 > - Break static unpacker logic
 > - Invalidate reverse-engineering signatures
 > - Disrupt clustering in sandboxes
 > - Strip metadata, overlays, debug traces
 
-> ### **Perfect for:**
-> - Old protector builds (e.g. legacy Enigma)
-> - Repacked or cracked stubs
-> - VMP-ed samples with reused headers
+> ### 🤩 **Perfect for:**
+> - For packed/protected builds (e.g. legacy Enigma)
+> - To create your own protector on this base
 > - Hardened loaders that remain structurally default
+> - To create interesting crackme quests
+> - For educational purposes
 
 ## ✨ What it modifies
 
