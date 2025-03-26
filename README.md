@@ -9,6 +9,9 @@ It **does not pack, encrypt or inject**. Instead, it mutates low-hanging but cri
 > [!NOTE]
 > Can be used **after** packers/protectors like VMProtect, Themida, Enigma, UPX, etc.
 
+> 🛠 **Download build:**
+> * [Available for Windows x64](https://github.com/DosX-dev/Astral-PE/releases/tag/Stable)
+
 ## 🔧 In what cases is it useful?
 
 You’ve protected a binary — but public unpackers or YARA rules still target its **unchanged structure**.
@@ -84,9 +87,9 @@ Build → Any packer → AstralPE → Sign / Pack → Distribute
 - Not a cryptor
 - Not a stub injector
 - Not a runtime packer
-- Not a code obfuscator (this is a advanced PE-headers obfuscator)
+- Not a **code** obfuscator
 
-It’s a **surgical metadata cleaner** and **headers mutator** for post-processing protected binaries.
+It’s a **surgical metadata cleaner** and **PE-headers obfuscator** for post-processing protected binaries.
 
 ## Before and after
 A file compiled via Microsoft Visual C++ was chosen as a sample for demonstration.
@@ -102,3 +105,7 @@ A file compiled via Microsoft Visual C++ was chosen as a sample for demonstratio
 > ### No debug data in PE!
 > Automatically remove references to PDB files, embedded debug information or other patterns that can simplify analysis (e.g. Rich signature)
 > ![](pics/before_and_after_3.png)
+
+---
+
+![](pics/preview.png)
