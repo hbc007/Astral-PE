@@ -30,26 +30,29 @@ You’ve protected a binary — but public unpackers or YARA rules still target 
 
 Astral-PE applies precise, compliant, and execution-safe mutations:
 
-| Target                  | Description                                                |
-|-------------------------|------------------------------------------------------------|
-| 🕓 Timestamp            | Clears `TimeDateStamp` in file headers                    |
-| 🧠 Rich Header          | Fully removed — breaks toolchain fingerprinting           |
-| 📜 Section Names        | Wiped (`.text`, `.rsrc`, etc. → null)                     |
-| 📎 Checksum              | Reset to zero                                             |
-| 📦 Overlay              | Stripped if file was signed                               |
-| 🧵 TLS Directory        | Removed if unused                                         |
-| ⚙ Load Config           | Deleted (if CFG not present)                              |
-| 🧬 Relocations          | Removed if not used in the file                           |
-| 🧱 Large Address Aware  | Enables 4 GB memory range for 32-bit processes            |
-| 📋 Version Info         | Erased from optional header                               |
-| 📁 Original Filename    | Located and zeroed in binary tail                         |
-| 🔎 Debug Info           | PDB paths wiped, Debug Directory erased                   |
-| 🚀 Entry Point Patch    | Replaces or shuffles PUSH/PROLOGUE bytes (e.g. UPX)       |
-| 🧪 Import Table         | DLL names mutated: case, prefix, randomized formatting    |
-| 🏷 Export Table          | Faked if absent (baits certain scanners)                  |
-| 📚 Data Directory       | All unused entries cleaned                                |
-| 💾 Permissions          | R/W/X + code flags applied to all sections                |
-| 📄 DOS Stub             | Reset to clean "MZ", patched `e_lfanew`                   |
+| Target                  | Description                                                               |
+|-------------------------|---------------------------------------------------------------------------|
+| 🕓 Timestamp            | Clears `TimeDateStamp` in file headers                                   |
+| 🧠 Rich Header          | Fully removed — breaks toolchain fingerprinting                          |
+| 📜 Section Names        | Wiped (`.text`, `.rsrc`, etc. → null)                                    |
+| 📎 Checksum             | Reset to zero                                                             |
+| 📦 Overlay              | Stripped if file was signed                                              |
+| 🧵 TLS Directory        | Removed if unused                                                        |
+| ⚙ Load Config           | Deleted (if CFG not present)                                             |
+| 🧬 Relocations          | Removed if not used in the file                                          |
+| 🧱 Large Address Aware  | Enables 4 GB memory range for 32-bit processes                           |
+| 🧩 Header Flags         | Stripped: `DEBUG_STRIPPED`, `LOCAL_SYMS_STRIPPED`, `LINE_NUMS_STRIPPED`  |
+| 🧼 Subsystem Version    | Minimum OS and Subsystem versions set to zero                            |
+| 🧠 Stack & Heap Reserve | Increased to safe defaults (32/64 MB) if too low                         |
+| 📋 Version Info         | Erased from optional header                                              |
+| 📁 Original Filename    | Located and zeroed in binary tail                                        |
+| 🔎 Debug Info           | PDB paths wiped, Debug Directory erased                                  |
+| 🚀 Entry Point Patch    | Replaces or shuffles PUSH/PROLOGUE bytes (e.g. UPX)                      |
+| 🧪 Import Table         | DLL names mutated: case, prefix, randomized formatting                   |
+| 🏷 Export Table         | Faked if absent (baits certain scanners)                                  |
+| 📚 Data Directory       | All unused entries cleaned                                               |
+| 💾 Permissions          | R/W/X + code flags applied to all sections                               |
+| 📄 DOS Stub             | Reset to clean "MZ", patched `e_lfanew`                                  |
 
 📝 **Does not support .NET binaries**. Native PE only.
 
