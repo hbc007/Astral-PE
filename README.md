@@ -39,7 +39,8 @@ Astral-PE applies precise, compliant, and execution-safe mutations:
 | 📦 Overlay              | Stripped if file was signed                               |
 | 🧵 TLS Directory        | Removed if unused                                         |
 | ⚙ Load Config           | Deleted (if CFG not present)                              |
-| 🧬 Relocations          | `.reloc` section removed if not required                  |
+| 🧬 Relocations          | Removed if not used in the file                           |
+| 🧱 Large Address Aware  | Enables 4 GB memory range for 32-bit processes            |
 | 📋 Version Info         | Erased from optional header                               |
 | 📁 Original Filename    | Located and zeroed in binary tail                         |
 | 🔎 Debug Info           | PDB paths wiped, Debug Directory erased                   |
