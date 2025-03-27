@@ -109,7 +109,7 @@ namespace AstralPE.Obfuscator.Modules {
             // Set DEBUG_STRIPPED, LINE_NUMS_STRIPPED, and LOCAL_SYMS_STRIPPED flags in FileHeader.Characteristics
             const ushort IMAGE_FILE_DEBUG_STRIPPED = 0x0200,
                          IMAGE_FILE_LINE_NUMS_STRIPPED = 0x0004,
-                         IMAGE_FILE_LOCAL_SYMS_STRIPPED = 0x0010;
+                         IMAGE_FILE_LOCAL_SYMS_STRIPPED = 0x0008;
 
             int fileHeaderOffset = e_lfanew + 4, // Skip PE magic "PE\0\0"
                 characteristicsOffset = fileHeaderOffset + 18; // Offset 18 bytes into IMAGE_FILE_HEADER
