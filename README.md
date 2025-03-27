@@ -55,7 +55,7 @@ Astral-PE applies precise, compliant, and execution-safe mutations:
 ## 🚀 Usage
 
 ```cmd
-AstralPE.exe <input.exe> -o <output.exe>
+Astral-PE.exe <input.exe> -o <output.exe>
 ```
 
 - `-o`, `--output` — output file name (optional)
@@ -66,7 +66,7 @@ AstralPE.exe <input.exe> -o <output.exe>
 ## 🧪 Example
 
 ```cmd
-AstralPE.exe payload.exe -o payload_clean.exe
+Astral-PE.exe payload.exe -o payload_clean.exe
 ```
 
 ## 📎 Combination with other protections
