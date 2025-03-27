@@ -57,19 +57,26 @@ namespace AstralPE.Obfuscator.Modules {
 
             foreach (string dllName in uniqueDlls) {
                 string dll = dllName;
-                if (dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                    dll = dll[..^4];
 
-                string[] sep = { "./", ".\\" };
-                string prefix = sep[rnd.Next(2)];
+                // Skip prefix mutation if extension is not .dll
+                bool hasDllExtension = dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+                if (hasDllExtension)
+                    dll = dll[..^4]; // remove .dll
 
-                if (rnd.Next(2) == 0)
-                    prefix += sep[rnd.Next(2)];
+                string mutated = StringsWorker.RandomizeCase(dll);
 
-                string mutated = prefix + StringsWorker.RandomizeCase(dll);
+                if (hasDllExtension) {
+                    string[] sep = { "./", ".\\" };
+                    string prefix = sep[rnd.Next(2)];
 
-                byte[] orig = Encoding.ASCII.GetBytes(dllName + "\0");
-                byte[] repl = Encoding.ASCII.GetBytes(mutated + "\0");
+                    if (rnd.Next(2) == 0)
+                        prefix += sep[rnd.Next(2)];
+
+                    mutated = prefix + mutated;
+                }
+
+                byte[] orig = Encoding.ASCII.GetBytes(dllName + "\0"),
+                       repl = Encoding.ASCII.GetBytes(mutated + "\0");
 
                 if (repl.Length > orig.Length * 2)
                     throw new Exception("Mutated import name is too long and might corrupt the import table.");
