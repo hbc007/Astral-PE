@@ -27,11 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class RichHeaderWiper : IObfuscationModule {
+    public class RichHeaderWiper : IAstralPeModule {
 
         /// <summary>
         /// Removes the Rich Header from the PE file if present.

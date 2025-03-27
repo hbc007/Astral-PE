@@ -29,12 +29,11 @@
 
 using PeNet;
 using PeNet.Header.Pe;
-using System;
 using System.Diagnostics;
 using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class OriginalNameCleaner : IObfuscationModule {
+    public class OriginalNameWiper : IAstralPeModule {
 
         /// <summary>
         /// Applies the cleaning logic to strip any original file names.
@@ -106,7 +105,7 @@ namespace AstralPE.Obfuscator.Modules {
             }
 
             if (nameOffset == 0 || nameOffset >= raw.Length)
-                return; // Out of bounds
+                throw new IndexOutOfRangeException("Export name offset is outside of file bounds.");
 
             // Zero out ASCII string name (null-terminated)
             int k = (int)nameOffset;

@@ -27,12 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 using PeNet;
-using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class ChecksumWiper : IObfuscationModule {
+    public class ChecksumWiper : IAstralPeModule {
 
         /// <summary>
         /// Overwrites the 4-byte CheckSum field (offset +0x40) in the optional header with zero, if it is non-zero.

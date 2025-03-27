@@ -24,33 +24,25 @@
  * Windows x86/x64 binaries. It modifies structural metadata while preserving execution integrity.
  *
  * For source code, updates, and documentation, visit:
- * https://github.com/DosX-dev/Astral-PE
+ * https://github.com/DosX/Astral-PE
  */
 
-using System;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class LinkerVersionInfoCleaner : IObfuscationModule {
+    public interface IAstralPeModule {
 
         /// <summary>
-        /// Clears linker version info from the PE Optional Header.
+        /// Applies the obfuscation (mutation) to the given PE file's raw bytes.
+        /// This method is called to modify the raw byte array of the PE file by applying specific mutations,
+        /// such as randomizing imports, modifying headers, or altering sections.
         /// </summary>
-        /// <param name="raw">The raw byte array of the PE file.</param>
-        /// <param name="pe">Parsed PE structure containing headers and sections.</param>
-        /// <param name="e_lfanew">Offset to the IMAGE_NT_HEADERS from the file's base.</param>
-        /// <param name="optStart">Offset to the IMAGE_OPTIONAL_HEADER.</param>
-        /// <param name="sectionTableOffset">Offset to the section table.</param>
-        /// <param name="rnd">Random instance for potential future mutations.</param>
-        public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            int versionOffset = optStart + 2;
-
-            // Ensure we are not writing out of bounds
-            if (versionOffset + 6 > raw.Length)
-                throw new IndexOutOfRangeException("Version info offset is outside of file bounds.");
-
-            // Erase version resource bytes.
-            Array.Clear(raw, versionOffset, 6);
-        }
+        /// <param name="raw">The raw byte array of the PE file that will be mutated.</param>
+        /// <param name="pe">The parsed PE file, providing access to the header, sections, imports, and other elements.</param>
+        /// <param name="e_lfanew">The offset to the IMAGE_NT_HEADERS.</param>
+        /// <param name="optStart">The start offset of the Optional Header in the PE file.</param>
+        /// <param name="sectionTableOffset">The offset to the section table in the PE file.</param>
+        /// <param name="rnd">A random number generator used for randomization in some mutation processes.</param>
+        void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd);
     }
 }

@@ -27,11 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class TimestampWiper : IObfuscationModule {
+    public class TimestampWiper : IAstralPeModule {
 
         /// <summary>
         /// Erases the TimeDateStamp from IMAGE_FILE_HEADER at offset (e_lfanew + 8).

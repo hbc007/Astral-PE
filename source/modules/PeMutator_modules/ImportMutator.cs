@@ -27,15 +27,11 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
-using System.Text;
 using PeNet;
-using System.Collections.Generic;
-using PeNet.Header.Pe;
+using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class ImportMutator : IObfuscationModule {
+    public class ImportMutator : IAstralPeModule {
 
         /// <summary>
         /// Randomizes the case of imported DLL names and adds random directory prefixes.
@@ -62,7 +58,7 @@ namespace AstralPE.Obfuscator.Modules {
 
                 // Read the original DLL name (null-terminated)
                 int length = 0;
-                while ((fileOffset + length) < raw.Length && raw[fileOffset + length] != 0)
+                while (fileOffset + length < raw.Length && raw[fileOffset + length] != 0)
                     length++;
                 if (length == 0)
                     continue;

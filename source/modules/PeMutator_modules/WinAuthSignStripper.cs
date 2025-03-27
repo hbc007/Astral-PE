@@ -27,12 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class WinAuthSignStripper : IObfuscationModule {
+    public class WinAuthSignStripper : IAstralPeModule {
 
         /// <summary>
         /// Applies the overlay stripper to remove the overlay from the PE file if it matches the signature.

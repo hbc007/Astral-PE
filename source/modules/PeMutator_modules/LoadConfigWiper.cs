@@ -27,12 +27,11 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 using PeNet;
 using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class LoadConfigWiper : IObfuscationModule {
+    public class LoadConfigWiper : IAstralPeModule {
 
         /// <summary>
         /// Applies the logic to wipe the Load Config Directory if safe.
@@ -54,8 +53,9 @@ namespace AstralPE.Obfuscator.Modules {
                 return;
 
             // Translate RVA to raw file offset
-            uint rva = loadCfg.VirtualAddress;
-            uint offset = rva.RvaToOffset(pe.ImageSectionHeaders);
+            uint rva = loadCfg.VirtualAddress,  
+                 offset = rva.RvaToOffset(pe.ImageSectionHeaders);
+
             if (offset == 0 || offset + loadCfg.Size > raw.Length)
                 throw new Exception("Load Config Directory points outside of file bounds.");
 

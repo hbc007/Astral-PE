@@ -27,11 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class DataDirCleaner : IObfuscationModule {
+    public class DataDirCleaner : IAstralPeModule {
 
         /// <summary>
         /// Clears unused Data Directory entries (where the RVA is 0) in the PE file's Optional Header.

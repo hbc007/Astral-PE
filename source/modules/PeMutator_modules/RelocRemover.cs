@@ -27,13 +27,11 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
 using PeNet;
 using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class RelocRemover : IObfuscationModule {
+    public class RelocRemover : IAstralPeModule {
 
         /// <summary>
         /// Removes the relocation directory and section from the PE file if they are not needed.

@@ -27,11 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class PermissionsSetter : IObfuscationModule {
+    public class PermissionsSetter : IAstralPeModule {
 
         /// <summary>
         /// Applies full memory access flags (RWE + code) to all section headers in the PE file.

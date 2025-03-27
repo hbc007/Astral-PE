@@ -30,11 +30,11 @@
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class LargeAddressAwareSetter : IAstralPeModule {
+    public class MemoryReserveExpander : IAstralPeModule {
 
         /// <summary>
-        /// Sets the IMAGE_FILE_LARGE_ADDRESS_AWARE flag in IMAGE_FILE_HEADER.Characteristics.
-        /// Does nothing if the flag is already set.
+        /// Sets SizeOfStackReserve and SizeOfHeapReserve to elevated defaults
+        /// if current values are below recommended thresholds.
         /// </summary>
         /// <param name="raw">Raw PE file bytes.</param>
         /// <param name="pe">Parsed PE metadata.</param>
@@ -43,25 +43,34 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">Offset to section headers.</param>
         /// <param name="rnd">Random number generator (unused).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            const ushort IMAGE_FILE_LARGE_ADDRESS_AWARE = 0x0020; // Flag to allow >2 GB address space on 64-bit
+            const uint STACK_RESERVE = 0x02000000, // 32 MB
+                       HEAP_RESERVE = 0x04000000; // 64 MB
 
-            int fileHeaderOffset = e_lfanew + 4, // Skip PE signature "PE\0\0"
-                characteristicsOffset = fileHeaderOffset + 18; // Offset to Characteristics field
+            bool is64 = pe.Is64Bit;
 
-            // Check for bounds safety
-            if (characteristicsOffset + 2 > raw.Length)
-                return;
+            int stackReserveOffset = is64 ? optStart + 0x48 : optStart + 0x40,
+                heapReserveOffset = is64 ? optStart + 0x58 : optStart + 0x50;
 
-            // Read current flags
-            ushort current = BitConverter.ToUInt16(raw, characteristicsOffset);
-            if ((current & IMAGE_FILE_LARGE_ADDRESS_AWARE) != 0)
-                return;
+            if (stackReserveOffset + (is64 ? 8 : 4) > raw.Length || heapReserveOffset + (is64 ? 8 : 4) > raw.Length)
+                throw new IndexOutOfRangeException("Stack or heap reserve field is outside of file bounds.");
 
-            // Set flag and write back
-            current |= IMAGE_FILE_LARGE_ADDRESS_AWARE;
-            byte[] updated = BitConverter.GetBytes(current);
-            raw[characteristicsOffset] = updated[0];
-            raw[characteristicsOffset + 1] = updated[1];
+            // Stack reserve
+            if (stackReserveOffset + (is64 ? 8 : 4) <= raw.Length) {
+                ulong current = is64 ? BitConverter.ToUInt64(raw, stackReserveOffset) : BitConverter.ToUInt32(raw, stackReserveOffset);
+                if (current < STACK_RESERVE) {
+                    byte[] updated = is64 ? BitConverter.GetBytes((ulong)STACK_RESERVE) : BitConverter.GetBytes(STACK_RESERVE);
+                    Buffer.BlockCopy(updated, 0, raw, stackReserveOffset, updated.Length);
+                }
+            }
+
+            // Heap reserve
+            if (heapReserveOffset + (is64 ? 8 : 4) <= raw.Length) {
+                ulong current = is64 ? BitConverter.ToUInt64(raw, heapReserveOffset) : BitConverter.ToUInt32(raw, heapReserveOffset);
+                if (current < HEAP_RESERVE) {
+                    byte[] updated = is64 ? BitConverter.GetBytes((ulong)HEAP_RESERVE) : BitConverter.GetBytes(HEAP_RESERVE);
+                    Buffer.BlockCopy(updated, 0, raw, heapReserveOffset, updated.Length);
+                }
+            }
         }
     }
 }

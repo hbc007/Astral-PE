@@ -42,7 +42,7 @@ namespace AstralPE.Obfuscator {
         private readonly int optStart;
         private readonly int sectionTableOffset;
 
-        private readonly List<IObfuscationModule> modules = new();
+        private readonly List<IAstralPeModule> modules = new();
 
         public static string selectedFilePath = String.Empty;
 
@@ -73,12 +73,14 @@ namespace AstralPE.Obfuscator {
         /// Registers all mutation modules in the order they should be applied.
         /// </summary>
         private void RegisterModules() {
-            IObfuscationModule[]? list = new IObfuscationModule[] {
+            IAstralPeModule[]? list = new IAstralPeModule[] {
                 new UpxPackerMutator(),
-                new LinkerVersionInfoCleaner(),
+                new LinkerVersionInfoWiper(),
                 new LargeAddressAwareSetter(),
+                new MemoryReserveExpander(),
+                new MinimumOsVersionWiper(),
                 new WinAuthSignStripper(),
-                new OriginalNameCleaner(),
+                new OriginalNameWiper(),
                 new EntryPointPatcher(),
                 new PermissionsSetter(),
                 new RichHeaderWiper(),
@@ -95,7 +97,7 @@ namespace AstralPE.Obfuscator {
                 new SectionNameWiper() // Must be last
             };
 
-            foreach (IObfuscationModule? module in list)
+            foreach (IAstralPeModule? module in list)
                 modules.Add(module);
         }
 
@@ -110,7 +112,7 @@ namespace AstralPE.Obfuscator {
                 Environment.Exit(1);
             }
 
-            foreach (IObfuscationModule? module in modules) {
+            foreach (IAstralPeModule? module in modules) {
                 try {
                     module.Apply(ref raw, pe, e_lfanew, optStart, sectionTableOffset, rnd);
                 } catch (Exception ex) {

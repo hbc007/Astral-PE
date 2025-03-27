@@ -27,11 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class DosStubPatcher : IObfuscationModule {
+    public class DosStubPatcher : IAstralPeModule {
 
         /// <summary>
         /// Patches the DOS stub of the PE file:

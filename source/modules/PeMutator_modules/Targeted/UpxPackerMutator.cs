@@ -27,13 +27,11 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
-using System.Text;
 using PeNet;
+using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class UpxPackerMutator : IObfuscationModule {
+    public class UpxPackerMutator : IAstralPeModule {
 
         /// <summary>
         /// Detects and removes the UPX version signature from the PE file and changes the imports hash.

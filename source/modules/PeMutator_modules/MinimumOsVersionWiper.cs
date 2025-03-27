@@ -24,25 +24,37 @@
  * Windows x86/x64 binaries. It modifies structural metadata while preserving execution integrity.
  *
  * For source code, updates, and documentation, visit:
- * https://github.com/DosX/Astral-PE
+ * https://github.com/DosX-dev/Astral-PE
  */
 
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public interface IObfuscationModule {
+    public class MinimumOsVersionWiper : IAstralPeModule {
 
         /// <summary>
-        /// Applies the obfuscation (mutation) to the given PE file's raw bytes.
-        /// This method is called to modify the raw byte array of the PE file by applying specific mutations,
-        /// such as randomizing imports, modifying headers, or altering sections.
+        /// Sets MajorOperatingSystemVersion and MinorOperatingSystemVersion to zero
+        /// in the IMAGE_OPTIONAL_HEADER if present.
         /// </summary>
-        /// <param name="raw">The raw byte array of the PE file that will be mutated.</param>
-        /// <param name="pe">The parsed PE file, providing access to the header, sections, imports, and other elements.</param>
-        /// <param name="e_lfanew">The offset to the IMAGE_NT_HEADERS.</param>
-        /// <param name="optStart">The start offset of the Optional Header in the PE file.</param>
-        /// <param name="sectionTableOffset">The offset to the section table in the PE file.</param>
-        /// <param name="rnd">A random number generator used for randomization in some mutation processes.</param>
-        void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd);
+        /// <param name="raw">Raw PE file bytes.</param>
+        /// <param name="pe">Parsed PE metadata.</param>
+        /// <param name="e_lfanew">Offset to IMAGE_NT_HEADERS.</param>
+        /// <param name="optStart">Offset to IMAGE_OPTIONAL_HEADER.</param>
+        /// <param name="sectionTableOffset">Offset to section headers.</param>
+        /// <param name="rnd">Random number generator (unused).</param>
+        public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
+            int majorOffset = optStart + 0x28,
+                minorOffset = optStart + 0x2A;
+
+            if (minorOffset + 2 > raw.Length)
+                throw new IndexOutOfRangeException("OS version fields are outside of file bounds.");
+
+            // Overwrite 2 bytes each (little-endian ushort = 0x0000)
+            raw[majorOffset] = 0x00;
+            raw[majorOffset + 1] = 0x00;
+            raw[minorOffset] = 0x00;
+            raw[minorOffset + 1] = 0x00;
+        }
+
     }
 }

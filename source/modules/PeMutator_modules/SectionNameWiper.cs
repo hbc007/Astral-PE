@@ -27,12 +27,10 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class SectionNameWiper : IObfuscationModule {
+    public class SectionNameWiper : IAstralPeModule {
 
         // The size of a section header in the PE file format (40 bytes).
         private const int SectionHeaderSize = 40;

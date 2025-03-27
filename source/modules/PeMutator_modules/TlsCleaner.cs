@@ -27,13 +27,11 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
 using PeNet;
 using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class TlsCleaner : IObfuscationModule {
+    public class TlsCleaner : IAstralPeModule {
 
         /// <summary>
         /// Cleans the TLS directory entry in the PE file. If the TLS directory is not in use or contains

@@ -27,13 +27,11 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
 using PeNet;
 using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class ExportFaker : IObfuscationModule {
+    public class ExportFaker : IAstralPeModule {
 
         /// <summary>
         /// If the PE file has no export directory, this method fakes the export directory

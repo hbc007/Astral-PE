@@ -27,14 +27,12 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Linq;
-using System.Text;
 using PeNet;
 using PeNet.Header.Pe;
+using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class DebugStripper : IObfuscationModule {
+    public class DebugStripper : IAstralPeModule {
 
         /// <summary>
         /// Applies the debug cleaning logic to the PE file, including directory cleanup,
