@@ -1,9 +1,9 @@
-/*
+Ôªø/*
  * This file is part of the Astral-PE project.
  * Copyright (c) 2025 DosX. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the ìSoftwareî), to deal
+ * of this software and associated documentation files (the ‚ÄúSoftware‚Äù), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
@@ -31,6 +31,8 @@ using System;
 using System.Linq;
 using System.Text;
 using PeNet;
+using System.Collections.Generic;
+using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
     public class ImportMutator : IObfuscationModule {
@@ -38,7 +40,7 @@ namespace AstralPE.Obfuscator.Modules {
         /// <summary>
         /// Randomizes the case of imported DLL names and adds random directory prefixes.
         /// This method modifies the import table of the PE file by replacing the original
-        /// DLL names with the mutated versions.
+        /// DLL names with mutated versions, based on the ImageImportDescriptors.
         /// </summary>
         /// <param name="raw">The raw byte array of the PE file.</param>
         /// <param name="pe">The parsed PE file.</param>
@@ -47,46 +49,49 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">Offset to the section table.</param>
         /// <param name="rnd">Random number generator used for randomizing case and prefixes.</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            if (pe.ImportedFunctions == null)
+            if (pe.ImageImportDescriptors == null || pe.ImageSectionHeaders == null)
                 throw new InvalidPeImageException();
 
-            IEnumerable<string>? uniqueDlls = pe.ImportedFunctions
-                .Select(x => x.DLL)
-                .Where(x => !string.IsNullOrEmpty(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
+            // Iterate over each import descriptor in the Import Table
+            foreach (var descriptor in pe.ImageImportDescriptors) {
+                uint nameRva = descriptor.Name,
+                     fileOffset = Patcher.RvaToOffset(nameRva, pe.ImageSectionHeaders);
 
-            foreach (string dllName in uniqueDlls) {
-                string dll = dllName;
+                if (fileOffset == 0 || fileOffset >= raw.Length)
+                    continue;
 
-                // Skip prefix mutation if extension is not .dll
+                // Read the original DLL name (null-terminated)
+                int length = 0;
+                while ((fileOffset + length) < raw.Length && raw[fileOffset + length] != 0)
+                    length++;
+                if (length == 0)
+                    continue;
+                string original = Encoding.ASCII.GetString(raw, (int)fileOffset, length);
+
+                // Prepare the mutated name based on the original name
+                string dll = original;
                 bool hasDllExtension = dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+
                 if (hasDllExtension)
-                    dll = dll[..^4]; // remove .dll
+                    dll = dll.Substring(0, dll.Length - 4); // remove ".dll"
 
                 string mutated = StringsWorker.RandomizeCase(dll);
-
                 if (hasDllExtension) {
                     string[] sep = { "./", ".\\" };
-                    string prefix = sep[rnd.Next(2)];
-
+                    string prefix = sep[rnd.Next(sep.Length)];
                     if (rnd.Next(2) == 0)
-                        prefix += sep[rnd.Next(2)];
-
+                        prefix += sep[rnd.Next(sep.Length)];
                     mutated = prefix + mutated;
                 }
 
-                byte[] orig = Encoding.ASCII.GetBytes(dllName + "\0"),
-                       repl = Encoding.ASCII.GetBytes(mutated + "\0");
+                byte[] mutatedBytes = Encoding.ASCII.GetBytes(mutated + "\0");
 
-                if (repl.Length > orig.Length * 2)
-                    throw new Exception("Mutated import name is too long and might corrupt the import table.");
+                // Prevent potential corruption if the mutated name is too long
+                if (mutatedBytes.Length > length + 8)
+                    continue;
 
-                // Find index manually
-                int index = Patcher.IndexOf(raw, orig);
-                if (index != -1) {
-                    int writableLength = Math.Min(repl.Length, raw.Length - index);
-                    Array.Copy(repl, 0, raw, index, writableLength);
-                }
+                // Patch the mutated name into the raw file at the descriptor's location
+                Array.Copy(mutatedBytes, 0, raw, (int)fileOffset, mutatedBytes.Length);
             }
         }
     }

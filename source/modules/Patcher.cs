@@ -117,5 +117,19 @@ namespace AstralPE.Obfuscator.Modules {
             }
             return 0; // No matching section found
         }
+
+        /// <summary>
+        /// Converts a Relative Virtual Address (RVA) to a file offset using the section headers.
+        /// </summary>
+        /// <param name="rva">The RVA to convert.</param>
+        /// <param name="sections">The PE section headers.</param>
+        /// <returns>The corresponding file offset, or 0 if not found.</returns>
+        public static uint RvaToOffset(uint rva, ImageSectionHeader[] sections) {
+            foreach (var section in sections) {
+                if (rva >= section.VirtualAddress && rva < section.VirtualAddress + section.VirtualSize)
+                    return section.PointerToRawData + (rva - section.VirtualAddress);
+            }
+            return 0;
+        }
     }
 }
