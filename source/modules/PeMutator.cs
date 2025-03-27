@@ -1,6 +1,6 @@
 /*
  * This file is part of the Astral-PE project.
- * Copyright (c) 2025 DosX-dev. All rights reserved.
+ * Copyright (c) 2025 DosX. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the “Software”), to deal
@@ -73,7 +73,8 @@ namespace AstralPE.Obfuscator {
         /// Registers all mutation modules in the order they should be applied.
         /// </summary>
         private void RegisterModules() {
-            var list = new IObfuscationModule[] {
+            IObfuscationModule[]? list = new IObfuscationModule[] {
+                new UpxPackerMutator(),
                 new LinkerVersionInfoCleaner(),
                 new WinAuthSignStripper(),
                 new OriginalNameCleaner(),

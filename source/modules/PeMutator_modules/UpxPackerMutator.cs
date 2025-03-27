@@ -28,34 +28,51 @@
  */
 
 using System;
+using System.Linq;
+using System.Text;
 using PeNet;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class TimestampWiper : IObfuscationModule {
+    public class UpxPackerMutator : IObfuscationModule {
 
         /// <summary>
-        /// Erases the TimeDateStamp from IMAGE_FILE_HEADER at offset (e_lfanew + 8).
-        /// This removes the build timestamp metadata used for file versioning.
+        /// Detects and removes the UPX version signature from the PE file and changes the imports hash.
         /// </summary>
         /// <param name="raw">The raw byte array of the PE file.</param>
-        /// <param name="pe">Parsed PE file structure (not directly used here).</param>
+        /// <param name="pe">The parsed PE structure.</param>
         /// <param name="e_lfanew">Offset to IMAGE_NT_HEADERS.</param>
         /// <param name="optStart">Offset to IMAGE_OPTIONAL_HEADER.</param>
-        /// <param name="sectionTableOffset">Offset to section headers.</param>
-        /// <param name="rnd">Random instance (not used).</param>
+        /// <param name="sectionTableOffset">Offset to section table start.</param>
+        /// <param name="rnd">Random instance (unused).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            int offset = e_lfanew + 8;
-
-            // Offset sanity check
-            if (e_lfanew <= 0 || e_lfanew > raw.Length)
+            if (pe.ImageSectionHeaders == null)
                 throw new InvalidPeImageException();
 
-            // Ensure the field lies within bounds
-            if (offset + 4 > raw.Length)
-                throw new IndexOutOfRangeException("TimeDateStamp offset exceeds file size.");
+            // Check for any section named "UPX"
+            if (!pe.ImageSectionHeaders.Any(s => s.Name?.Contains("UPX") == true))
+                return;
 
-            // Apply mutation
-            Array.Clear(raw, offset, 4);
+            // Signature pattern: 4 bytes for version + null + "UPX!"
+            // e.g., "4.25\0UPX!" = 4 + 1 + 4 = 9 bytes
+            for (int i = 0; i < raw.Length - 8; i++) {
+                if (raw[i + 4] == 0x00 &&
+                    raw[i + 5] == 'U' && raw[i + 6] == 'P' &&
+                    raw[i + 7] == 'X' && raw[i + 8] == '!') {
+
+                    // Clear 9-byte UPX signature
+                    Patcher.ReplaceBytes(raw, raw.Skip(i).Take(9).ToArray(), new byte[9]);
+                    break;
+                }
+            }
+
+            if (pe.IsExe) {
+                // Change imports hash. Yes, we sacrifice ExitProcess, but it works
+                byte[] exit = Encoding.ASCII.GetBytes("ExitProcess\0"),
+                       fake = Encoding.ASCII.GetBytes("CopyContext\0");
+
+                if (fake.Length <= exit.Length)
+                    Patcher.ReplaceBytes(raw, exit, fake);
+            }
         }
     }
 }

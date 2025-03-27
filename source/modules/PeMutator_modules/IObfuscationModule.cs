@@ -1,6 +1,6 @@
 /*
  * This file is part of the Astral-PE project.
- * Copyright (c) 2025 DosX-dev. All rights reserved.
+ * Copyright (c) 2025 DosX. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the “Software”), to deal
@@ -24,7 +24,7 @@
  * Windows x86/x64 binaries. It modifies structural metadata while preserving execution integrity.
  *
  * For source code, updates, and documentation, visit:
- * https://github.com/DosX-dev/Astral-PE
+ * https://github.com/DosX/Astral-PE
  */
 
 using PeNet;
