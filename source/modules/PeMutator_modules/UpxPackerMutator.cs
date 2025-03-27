@@ -66,12 +66,12 @@ namespace AstralPE.Obfuscator.Modules {
             }
 
             if (pe.IsExe) {
-                // Change imports hash. Yes, we sacrifice ExitProcess, but it works
-                byte[] exit = Encoding.ASCII.GetBytes("ExitProcess\0"),
-                       fake = Encoding.ASCII.GetBytes("CopyContext\0");
 
-                if (fake.Length <= exit.Length)
-                    Patcher.ReplaceBytes(raw, exit, fake);
+                // Change imports hash. Yes, we sacrifice ExitProcess, but it works
+                byte[] exit = Encoding.ASCII.GetBytes("\0ExitProcess\0"),
+                       fake = Encoding.ASCII.GetBytes("\0CopyContext\0");
+
+                Patcher.ReplaceBytes(raw, exit, fake);
             }
         }
     }
