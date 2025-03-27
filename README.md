@@ -2,7 +2,7 @@
 
 ---
 
-Astral-PE is a **low-level mutator** (headers obfuscator and patcher) for Windows PE files (`.exe`, `.dll`) that rewrites structural metadata after protection — **without breaking execution**.
+Astral-PE is a **low-level mutator** (headers obfuscator and patcher) for Windows PE files (`.exe`, `.dll`) that rewrites structural metadata after compilation (or postbuild protection) — **without breaking execution**.
 
 It **does not pack, encrypt or inject**. Instead, it mutates low-hanging but critical structures like timestamps, headers, section flags, debug info, import/export names, and more.
 
