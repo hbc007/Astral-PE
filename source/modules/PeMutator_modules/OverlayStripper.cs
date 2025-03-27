@@ -6,8 +6,7 @@ namespace AstralPE.Obfuscator.Modules {
     public class OverlayStripper : IObfuscationModule {
 
         /// <summary>
-        /// Applies the overlay stripper to remove the overlay from the PE file if it matches the signature.
-        /// The signature we are looking for is "00 02 02 00" (which is a common pattern found in some overlays).
+        /// Applies the overlay stripper to remove the overlay if file signed (WinAuth certificate).
         /// If this pattern is found at the start of the overlay, the overlay is removed.
         /// </summary>
         /// <param name="raw">The raw byte array of the PE file.</param>
