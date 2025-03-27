@@ -76,6 +76,7 @@ namespace AstralPE.Obfuscator {
             IObfuscationModule[]? list = new IObfuscationModule[] {
                 new UpxPackerMutator(),
                 new LinkerVersionInfoCleaner(),
+                new LargeAddressAwareSetter(),
                 new WinAuthSignStripper(),
                 new OriginalNameCleaner(),
                 new EntryPointPatcher(),

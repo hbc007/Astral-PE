@@ -50,37 +50,32 @@ namespace AstralPE.Obfuscator.Modules {
             if (pe.ImageNtHeaders == null)
                 throw new InvalidOperationException();
 
-            // Ensure that the DataDirectory section is within bounds
+            // Ensure Optional Header and DataDirectory is valid
             if (optStart + 0x60 + 16 * 8 > raw.Length)
                 throw new Exception("Optional Header is corrupted or incomplete.");
 
-            // 1. Clear the Debug Directory if present
+            // Clear Debug Directory contents
             if (pe.ImageDebugDirectory != null && pe.ImageDebugDirectory.Any()) {
                 foreach (ImageDebugDirectory? dbg in pe.ImageDebugDirectory) {
                     int dbgOffset = (int)dbg.PointerToRawData;
                     int dbgSize = (int)dbg.SizeOfData;
 
-                    // Make sure we clear within bounds of the raw file
                     if (dbgOffset + dbgSize <= raw.Length)
                         Array.Clear(raw, dbgOffset, dbgSize);
                 }
             }
 
-            // Clear the Debug entry in DataDirectory (debug pointer in IMAGE_OPTIONAL_HEADER)
-            // The Debug entry is located in the DataDirectory at index IMAGE_DIRECTORY_ENTRY_DEBUG
+            // Zero out Debug entry in DataDirectory
             int debugDirOffset = optStart + 0x60 + ((int)PeNet.Header.Pe.DataDirectoryType.Debug * 8);
-
-            // Ensure we're within bounds and clear the entry (pointer + size)
             if (debugDirOffset + 8 <= raw.Length) {
-                Array.Clear(raw, debugDirOffset, 8); // Clear both the pointer and the size of the Debug Directory
+                Array.Clear(raw, debugDirOffset, 8);
             }
 
-            // Now, we explicitly set the DataDirectory Debug entry to zero (in the header)
-            ImageDataDirectory? dataDirectoryEntry = pe.ImageNtHeaders.OptionalHeader.DataDirectory[(int)PeNet.Header.Pe.DataDirectoryType.Debug];
+            var dataDirectoryEntry = pe.ImageNtHeaders.OptionalHeader.DataDirectory[(int)PeNet.Header.Pe.DataDirectoryType.Debug];
             dataDirectoryEntry.VirtualAddress = 0;
             dataDirectoryEntry.Size = 0;
 
-            // Wipe all embedded .pdb paths from binary
+            // Wipe all embedded .pdb paths
             ReadOnlySpan<byte> marker = new byte[] { (byte)'.', (byte)'p', (byte)'d', (byte)'b', 0 };
             Span<byte> span = raw;
             int pos = span.IndexOf(marker);
@@ -94,26 +89,40 @@ namespace AstralPE.Obfuscator.Modules {
                 if (pos != -1) pos += end;
             }
 
-            // Remove DotNetRuntimeDebugHeader if it's an export
-            if (pe.ImageNtHeaders == null || pe.ImageSectionHeaders == null)
+            // Remove DotNetRuntimeDebugHeader if located in export section
+            if (pe.ImageSectionHeaders == null)
                 throw new InvalidOperationException();
 
-            ImageDataDirectory? exportDir = pe.ImageNtHeaders.OptionalHeader.DataDirectory[0];
-            if (exportDir.VirtualAddress == 0 || exportDir.Size == 0)
-                return;
+            var exportDir = pe.ImageNtHeaders.OptionalHeader.DataDirectory[0];
+            if (exportDir.VirtualAddress != 0 && exportDir.Size != 0) {
+                uint expStart = exportDir.VirtualAddress;
+                uint expEnd = expStart + exportDir.Size;
 
-            uint expStart = exportDir.VirtualAddress,
-                 expEnd = expStart + exportDir.Size;
-
-            byte[] target = Encoding.ASCII.GetBytes("DotNetRuntimeDebugHeader\0");
-
-            int found = Patcher.IndexOf(raw, target);
-            if (found != -1) {
-                uint rva = Patcher.OffsetToRva((uint)found, pe.ImageSectionHeaders);
-
-                if (rva >= expStart && rva < expEnd) {
-                    Patcher.ReplaceBytes(raw, target, new byte[target.Length]);
+                byte[] target = Encoding.ASCII.GetBytes("DotNetRuntimeDebugHeader\0");
+                int found = Patcher.IndexOf(raw, target);
+                if (found != -1) {
+                    uint rva = Patcher.OffsetToRva((uint)found, pe.ImageSectionHeaders);
+                    if (rva >= expStart && rva < expEnd) {
+                        Patcher.ReplaceBytes(raw, target, new byte[target.Length]);
+                    }
                 }
+            }
+
+            // Set DEBUG_STRIPPED, LINE_NUMS_STRIPPED, and LOCAL_SYMS_STRIPPED flags in FileHeader.Characteristics
+            const ushort IMAGE_FILE_DEBUG_STRIPPED = 0x0200,
+                         IMAGE_FILE_LINE_NUMS_STRIPPED = 0x0004,
+                         IMAGE_FILE_LOCAL_SYMS_STRIPPED = 0x0010;
+
+            int fileHeaderOffset = e_lfanew + 4, // Skip PE magic "PE\0\0"
+                characteristicsOffset = fileHeaderOffset + 18; // Offset 18 bytes into IMAGE_FILE_HEADER
+
+            if (characteristicsOffset + 2 <= raw.Length) {
+                ushort current = BitConverter.ToUInt16(raw, characteristicsOffset);
+                current |= IMAGE_FILE_DEBUG_STRIPPED | IMAGE_FILE_LINE_NUMS_STRIPPED | IMAGE_FILE_LOCAL_SYMS_STRIPPED;
+
+                byte[] updated = BitConverter.GetBytes(current);
+                raw[characteristicsOffset] = updated[0];
+                raw[characteristicsOffset + 1] = updated[1];
             }
         }
     }
