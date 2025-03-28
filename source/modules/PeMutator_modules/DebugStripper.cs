@@ -91,7 +91,7 @@ namespace AstralPE.Obfuscator.Modules {
             if (pe.ImageSectionHeaders == null)
                 throw new InvalidOperationException();
 
-            var exportDir = pe.ImageNtHeaders.OptionalHeader.DataDirectory[0];
+            ImageDataDirectory? exportDir = pe.ImageNtHeaders.OptionalHeader.DataDirectory[0];
             if (exportDir.VirtualAddress != 0 && exportDir.Size != 0) {
                 uint expStart = exportDir.VirtualAddress;
                 uint expEnd = expStart + exportDir.Size;
