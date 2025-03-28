@@ -102,6 +102,64 @@ namespace AstralPE.Obfuscator.Modules {
                 for (int i = 0; i < pushes.Length; i++)
                     raw[epOffset + i] = pushes[i];
             }
+
+            // PATCH: VC++ or MinGW EP stack alignment mutation + NOP sequence replacement
+            if (pe.Is64Bit && epOffset + 32 < raw.Length) {
+                // Check if entry point starts with VC++-style prologue:
+                // sub rsp, imm8; call; add rsp, imm8
+                bool isVcStyle =
+                     raw[epOffset + 0] == 0x48 && raw[epOffset + 1] == 0x83 && raw[epOffset + 2] == 0xEC && // sub rsp, imm8
+                     raw[epOffset + 4] == 0xE8 &&                                                           // call ...
+                     raw[epOffset + 9] == 0x48 && raw[epOffset + 10] == 0x83 && raw[epOffset + 11] == 0xC4; // add rsp, imm8
+
+                // Check if entry point starts with MinGW-style prologue:
+                // sub rsp, imm8; mov rax, [rip+...]
+                bool isMinGwStyle =
+                     raw[epOffset + 0] == 0x48 && raw[epOffset + 1] == 0x83 && raw[epOffset + 2] == 0xEC && // sub rsp, imm8
+                     raw[epOffset + 4] == 0x48 && raw[epOffset + 5] == 0x8B && raw[epOffset + 6] == 0x05;   // mov rax, [rip+...]
+
+                // Proceed only if one of the patterns matched
+                if (isVcStyle || isMinGwStyle) {
+                    // Extract original stack size from SUB
+                    byte originalStackVal = raw[epOffset + 3];
+
+                    // Generate alternative valid stack sizes (must be aligned and >= 0x28)
+                    List<byte> stackVariants = new() { 0x28, 0x30, 0x38, 0x40, 0x48, 0x50, 0x58 };
+                    stackVariants.Remove(originalStackVal); // Avoid same value
+                    byte newStackVal = stackVariants[rnd.Next(stackVariants.Count)];
+
+                    // Patch SUB
+                    raw[epOffset + 3] = newStackVal;
+
+                    if (isVcStyle) {
+                        // VC++: patch matching ADD
+                        raw[epOffset + 12] = newStackVal;
+                    } else if (isMinGwStyle) {
+                        // MinGW: search for matching ADD near EP
+                        for (uint i = epOffset + 7; i < epOffset + 32 && i + 4 < raw.Length; i++) {
+                            if (raw[i + 0] == 0x48 && raw[i + 1] == 0x83 && raw[i + 2] == 0xC4 && // add rsp, imm8
+                                raw[i + 3] == originalStackVal &&
+                                raw[i + 4] == 0xC3) // ret
+                            {
+                                raw[i + 3] = newStackVal;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Replace 3x NOPs (0x90 90 90) with optimized 3-byte NOP (0F 1F 00)
+                    // Found typically after call instruction
+                    for (uint i = epOffset + 12; i < epOffset + 32 && i + 2 < raw.Length; i++) {
+                        if (raw[i] == 0x90 && raw[i + 1] == 0x90 && raw[i + 2] == 0x90) {
+                            raw[i + 0] = 0x0F;
+                            raw[i + 1] = 0x1F;
+                            raw[i + 2] = 0x00;
+                            break;
+                        }
+                    }
+                }
+            }
+
         }
     }
 }

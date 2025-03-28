@@ -93,8 +93,8 @@ namespace AstralPE.Obfuscator.Modules {
 
             ImageDataDirectory? exportDir = pe.ImageNtHeaders.OptionalHeader.DataDirectory[0];
             if (exportDir.VirtualAddress != 0 && exportDir.Size != 0) {
-                uint expStart = exportDir.VirtualAddress;
-                uint expEnd = expStart + exportDir.Size;
+                uint expStart = exportDir.VirtualAddress,
+                     expEnd = expStart + exportDir.Size;
 
                 byte[] target = Encoding.ASCII.GetBytes("DotNetRuntimeDebugHeader" + '\0');
                 int found = Patcher.IndexOf(raw, target);

@@ -74,6 +74,7 @@ namespace AstralPE.Obfuscator {
         /// </summary>
         private void RegisterModules() {
             IAstralPeModule[]? list = new IAstralPeModule[] {
+                new LegacyVbCompilerMutator(),
                 new UpxPackerMutator(),
                 new LinkerVersionInfoWiper(),
                 new LargeAddressAwareSetter(),
