@@ -52,30 +52,37 @@ namespace AstralPE.Obfuscator.Modules {
             if (epOffset >= raw.Length)
                 throw new Exception("EntryPoint offset is out of file bounds.");
 
-            byte[] baseOpcodes = new byte[] {
-                0x50, // PUSH *
-                0x40, // INC *
-                0x48  // DEC *
+            List<byte> instructions = new List<byte> {
+                // PUSH rAX–rDI (0x50–0x57), without 0x54 (PUSH rSP)
+                0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57,
+
+                // INC rAX–rDI (0x40–0x47), without 0x44 (INC rSP)
+                0x40, 0x41, 0x42, 0x43, 0x45, 0x46, 0x47,
+
+                // DEC rAX–rDI (0x48–0x4F), without 0x4C (DEC rSP)
+                0x48, 0x49, 0x4A, 0x4B, 0x4D, 0x4E, 0x4F,
+
+                // Other single-byte instructions
+                0x90, // NOP (No operation)
+                0xF8, // CLC (Clear carry flag)
+                0xF9, // STC (Set carry flag)
+                0xFC, // CLD (Clear direction flag)
+                0x27, // DAA (Decimal adjust AL after addition)
+                0x2F, // DAS (Decimal adjust AL after subtraction)
+                0x3F, // AAS (ASCII adjust AL after subtraction)
+                0x61, // POPAD (Pop all general-purpose registers)
+                0x9C, // PUSHFD (Push EFLAGS to stack)
+                0xF3, // REP / REPE / REPZ
+                0xF2, // REPNE / REPNZ
+                0x2E, // CS segment override
+                0x36, // SS segment override
+                0x3E, // DS segment override
+                0x26, // ES segment override
+                0x64, // FS segment override
+                0x65  // GS segment override
             };
 
-            List<byte> instructions = new List<byte>();
-
-            foreach (byte baseOpcode in baseOpcodes)
-                for (int i = 0; i < 8; i++)
-                    instructions.Add((byte)(baseOpcode + i));
-
-            instructions.AddRange(new byte[] {
-                0x90, // NOP
-                0xF8, // CLC
-                0xF9, // STC
-                0xFC, // CLD
-                0x27, // DAA
-                0x2F, // DAS
-                0x3F, // AAS
-                0x61, // POPAD
-                0x9C  // PUSHFD
-            });
-
+            // Replace opcode at entry point if it's 0x60 (PUSHAD)
             if (raw[epOffset] == 0x60)
                 raw[epOffset] = instructions[rnd.Next(instructions.Count)];
 
