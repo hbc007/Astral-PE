@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the Astral-PE project.
  * Copyright (c) 2025 DosX. All rights reserved.
  *

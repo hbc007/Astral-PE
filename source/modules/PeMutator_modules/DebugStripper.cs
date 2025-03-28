@@ -55,8 +55,8 @@ namespace AstralPE.Obfuscator.Modules {
             // Clear Debug Directory contents
             if (pe.ImageDebugDirectory != null && pe.ImageDebugDirectory.Any()) {
                 foreach (ImageDebugDirectory? dbg in pe.ImageDebugDirectory) {
-                    int dbgOffset = (int)dbg.PointerToRawData;
-                    int dbgSize = (int)dbg.SizeOfData;
+                    int dbgOffset = (int)dbg.PointerToRawData,
+                        dbgSize = (int)dbg.SizeOfData;
 
                     if (dbgOffset + dbgSize <= raw.Length)
                         Array.Clear(raw, dbgOffset, dbgSize);

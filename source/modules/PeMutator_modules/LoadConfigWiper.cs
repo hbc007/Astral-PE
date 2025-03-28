@@ -27,6 +27,7 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
+using System;
 using PeNet;
 using PeNet.Header.Pe;
 

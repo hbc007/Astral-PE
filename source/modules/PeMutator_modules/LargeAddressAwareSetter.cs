@@ -50,7 +50,7 @@ namespace AstralPE.Obfuscator.Modules {
 
             // Check for bounds safety
             if (characteristicsOffset + 2 > raw.Length)
-                return;
+                throw new IndexOutOfRangeException("Characteristics field is outside of file bounds.");
 
             // Read current flags
             ushort current = BitConverter.ToUInt16(raw, characteristicsOffset);

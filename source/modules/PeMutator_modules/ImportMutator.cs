@@ -32,47 +32,58 @@ using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
     public class ImportMutator : IAstralPeModule {
-
         /// <summary>
-        /// Randomizes the case of imported DLL names and adds random directory prefixes.
-        /// This method modifies the import table of the PE file by replacing the original
-        /// DLL names with mutated versions, based on the ImageImportDescriptors.
+        /// Applies mutation to the PE file's import table.
+        /// This includes DLL name mutation and noise injection into metadata fields.
         /// </summary>
-        /// <param name="raw">The raw byte array of the PE file.</param>
-        /// <param name="pe">The parsed PE file.</param>
-        /// <param name="e_lfanew">Offset to IMAGE_NT_HEADERS.</param>
-        /// <param name="optStart">Start offset of the Optional Header.</param>
-        /// <param name="sectionTableOffset">Offset to the section table.</param>
-        /// <param name="rnd">Random number generator used for randomizing case and prefixes.</param>
+        /// <param name="raw">Raw byte array representing the PE file.</param>
+        /// <param name="pe">Parsed PE file object.</param>
+        /// <param name="e_lfanew">Offset to IMAGE_NT_HEADERS (unused here).</param>
+        /// <param name="optStart">Offset to the Optional Header start (unused here).</param>
+        /// <param name="sectionTableOffset">Offset to the section table (unused here).</param>
+        /// <param name="rnd">Random number generator instance.</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            if (pe.ImageImportDescriptors == null || pe.ImageSectionHeaders == null)
+            // Basic validation for PE structure presence
+            if (pe.ImageNtHeaders == null || pe.ImageSectionHeaders == null ||
+                pe.ImageImportDescriptors == null || pe.ImageSectionHeaders == null)
                 throw new InvalidPeImageException();
 
-            // Iterate over each import descriptor in the Import Table
+            uint importTableRva = pe.ImageNtHeaders.OptionalHeader.DataDirectory[1].VirtualAddress;
+            int descriptorIndex = 0;
+
+            // Iterate through each IMAGE_IMPORT_DESCRIPTOR in the import table
             foreach (var descriptor in pe.ImageImportDescriptors) {
                 uint nameRva = descriptor.Name,
                      fileOffset = Patcher.RvaToOffset(nameRva, pe.ImageSectionHeaders);
 
                 if (fileOffset == 0 || fileOffset >= raw.Length)
-                    continue;
+                    continue; // Skip invalid or corrupted entries
 
-                // Read the original DLL name (null-terminated)
+                // Calculate the length of the null-terminated DLL name string
                 int length = 0;
+                
                 while (fileOffset + length < raw.Length && raw[fileOffset + length] != 0)
                     length++;
+
                 if (length == 0)
                     continue;
-                string original = Encoding.ASCII.GetString(raw, (int)fileOffset, length);
 
-                // Prepare the mutated name based on the original name
-                string dll = original;
+                // Extract original DLL name
+                string original = Encoding.ASCII.GetString(raw, (int)fileOffset, length),
+                       dll = original;
+
+                // Only mutate DLLs that are not Windows API sets (e.g., api-ms-win-*)
                 bool hasDllExtension = dll.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
 
+                // Remove ".dll" extension for mutation
                 if (hasDllExtension)
-                    dll = dll.Substring(0, dll.Length - 4); // remove ".dll"
+                    dll = dll.Substring(0, dll.Length - 4);
 
+                // Randomize character casing of the DLL name
                 string mutated = StringsWorker.RandomizeCase(dll);
-                if (hasDllExtension) {
+
+                // Optionally prepend random path-like prefix
+                if (hasDllExtension && !dll.StartsWith("api-ms-win-", StringComparison.OrdinalIgnoreCase)) {
                     string[] sep = { "./", ".\\" };
                     string prefix = sep[rnd.Next(sep.Length)];
                     if (rnd.Next(2) == 0)
@@ -80,14 +91,37 @@ namespace AstralPE.Obfuscator.Modules {
                     mutated = prefix + mutated;
                 }
 
+                // Encode back to ASCII with null terminator
                 byte[] mutatedBytes = Encoding.ASCII.GetBytes(mutated + "\0");
 
-                // Prevent potential corruption if the mutated name is too long
+                // Enforce safety limit (max 8 extra bytes beyond original)
                 if (mutatedBytes.Length > length + 8)
-                    continue;
+                    throw new InvalidOperationException("Mutated name is too long.");
 
-                // Patch the mutated name into the raw file at the descriptor's location
+                // Overwrite original DLL name in-place
                 Array.Copy(mutatedBytes, 0, raw, (int)fileOffset, mutatedBytes.Length);
+
+                // Get the raw file offset for this IMAGE_IMPORT_DESCRIPTOR
+                uint descriptorRva = importTableRva + (uint)(descriptorIndex * 20),
+                     descriptorOffset = Patcher.RvaToOffset(descriptorRva, pe.ImageSectionHeaders);
+
+                // Inject random values into TimeDateStamp and ForwarderChain (fields at offset +4 and +8)
+                if (descriptorOffset + 12 <= raw.Length) {
+                    uint timeDateStamp = (uint)rnd.Next(int.MinValue, int.MaxValue),
+                         forwarderChain = (uint)rnd.Next(int.MinValue, int.MaxValue);
+
+                    raw[descriptorOffset + 4] = (byte)(timeDateStamp & 0xFF);
+                    raw[descriptorOffset + 5] = (byte)((timeDateStamp >> 8) & 0xFF);
+                    raw[descriptorOffset + 6] = (byte)((timeDateStamp >> 16) & 0xFF);
+                    raw[descriptorOffset + 7] = (byte)((timeDateStamp >> 24) & 0xFF);
+
+                    raw[descriptorOffset + 8] = (byte)(forwarderChain & 0xFF);
+                    raw[descriptorOffset + 9] = (byte)((forwarderChain >> 8) & 0xFF);
+                    raw[descriptorOffset + 10] = (byte)((forwarderChain >> 16) & 0xFF);
+                    raw[descriptorOffset + 11] = (byte)((forwarderChain >> 24) & 0xFF);
+                }
+
+                descriptorIndex++;
             }
         }
     }
