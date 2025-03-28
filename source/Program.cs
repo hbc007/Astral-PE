@@ -27,10 +27,8 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.IO;
-using PeNet;
 using AstralPE.Obfuscator;
+using PeNet;
 
 namespace AstralPE {
     /// <summary>

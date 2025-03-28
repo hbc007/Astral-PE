@@ -53,7 +53,7 @@ namespace AstralPE.Obfuscator.Modules {
                 throw new Exception("Optional Header is corrupted or incomplete.");
 
             // Clear Debug Directory contents
-            if (pe.ImageDebugDirectory != null && pe.ImageDebugDirectory.Any()) {
+            if (pe.ImageDebugDirectory != null && pe.ImageDebugDirectory.Length != 0) {
                 foreach (ImageDebugDirectory? dbg in pe.ImageDebugDirectory) {
                     int dbgOffset = (int)dbg.PointerToRawData,
                         dbgSize = (int)dbg.SizeOfData;
@@ -69,7 +69,7 @@ namespace AstralPE.Obfuscator.Modules {
                 Array.Clear(raw, debugDirOffset, 8);
             }
 
-            var dataDirectoryEntry = pe.ImageNtHeaders.OptionalHeader.DataDirectory[(int)PeNet.Header.Pe.DataDirectoryType.Debug];
+            ImageDataDirectory? dataDirectoryEntry = pe.ImageNtHeaders.OptionalHeader.DataDirectory[(int)PeNet.Header.Pe.DataDirectoryType.Debug];
             dataDirectoryEntry.VirtualAddress = 0;
             dataDirectoryEntry.Size = 0;
 
@@ -83,7 +83,7 @@ namespace AstralPE.Obfuscator.Modules {
                 int end = pos + marker.Length;
                 while (end < span.Length && span[end] != 0) end++;
                 for (int i = start; i < end; i++) span[i] = 0;
-                pos = span.Slice(end).IndexOf(marker);
+                pos = span[end..].IndexOf(marker);
                 if (pos != -1) pos += end;
             }
 
@@ -96,7 +96,7 @@ namespace AstralPE.Obfuscator.Modules {
                 uint expStart = exportDir.VirtualAddress;
                 uint expEnd = expStart + exportDir.Size;
 
-                byte[] target = Encoding.ASCII.GetBytes("DotNetRuntimeDebugHeader\0");
+                byte[] target = Encoding.ASCII.GetBytes("DotNetRuntimeDebugHeader" + '\0');
                 int found = Patcher.IndexOf(raw, target);
                 if (found != -1) {
                     uint rva = Patcher.OffsetToRva((uint)found, pe.ImageSectionHeaders);

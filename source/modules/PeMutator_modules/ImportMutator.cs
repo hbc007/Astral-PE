@@ -77,7 +77,7 @@ namespace AstralPE.Obfuscator.Modules {
 
                 // Remove ".dll" extension for mutation
                 if (hasDllExtension)
-                    dll = dll.Substring(0, dll.Length - 4);
+                    dll = dll[..^4];
 
                 // Randomize character casing of the DLL name
                 string mutated = StringsWorker.RandomizeCase(dll);

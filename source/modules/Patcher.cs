@@ -28,10 +28,7 @@
  */
 
 using PeNet.Header.Pe;
-using System;
 using System.Collections.Concurrent;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace AstralPE.Obfuscator.Modules {
     public static class Patcher {
@@ -49,8 +46,8 @@ namespace AstralPE.Obfuscator.Modules {
                 return;
 
             ConcurrentBag<int>? matches = new ConcurrentBag<int>(); // Used to store the indices of all matches found
-            int len = find.Length; // The length of the `find` sequence
-            int limit = data.Length - len; // The last index where a match could occur in the `data` array
+            int len = find.Length, // The length of the `find` sequence
+                limit = data.Length - len; // The last index where a match could occur in the `data` array
 
             // Parallel processing to find all occurrences of the `find` sequence
             Parallel.ForEach(

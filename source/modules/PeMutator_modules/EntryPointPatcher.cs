@@ -34,9 +34,6 @@ namespace AstralPE.Obfuscator.Modules {
 
         /// <summary>
         /// Patches the entry point in the PE file.
-        /// 
-        /// The first patch is relevant for most packers with the 'pushal' instruction at the entry point.
-        /// The second patch handles the entry point for UPX 64-bit files.
         /// </summary>
         /// <param name="raw">The raw byte array of the PE file.</param>
         /// <param name="pe">The parsed PE file.</param>
@@ -45,18 +42,42 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">Offset to the section table.</param>
         /// <param name="rnd">Random number generator to shuffle bytes (used in the second patch).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
+            // Ensure the PE file is valid
             if (pe.ImageNtHeaders == null || pe.ImageSectionHeaders == null)
                 throw new InvalidPeImageException();
 
-            uint epRva = pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint;
-            uint epOffset = epRva.RvaToOffset(pe.ImageSectionHeaders);
+            uint epRva = pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint,
+                 epOffset = epRva.RvaToOffset(pe.ImageSectionHeaders);
 
             if (epOffset >= raw.Length)
                 throw new Exception("EntryPoint offset is out of file bounds.");
 
-            // First patch: Replace PUSHAD (0x60) with NOP (0x90)
+            byte[] baseOpcodes = new byte[] {
+                0x50, // PUSH *
+                0x40, // INC *
+                0x48  // DEC *
+            };
+
+            List<byte> instructions = new List<byte>();
+
+            foreach (byte baseOpcode in baseOpcodes)
+                for (int i = 0; i < 8; i++)
+                    instructions.Add((byte)(baseOpcode + i));
+
+            instructions.AddRange(new byte[] {
+                0x90, // NOP
+                0xF8, // CLC
+                0xF9, // STC
+                0xFC, // CLD
+                0x27, // DAA
+                0x2F, // DAS
+                0x3F, // AAS
+                0x61, // POPAD
+                0x9C  // PUSHFD
+            });
+
             if (raw[epOffset] == 0x60)
-                raw[epOffset] = 0x90;
+                raw[epOffset] = instructions[rnd.Next(instructions.Count)];
 
             // Second patch: Shuffle PUSH instructions in UPX64 signature
             if (epOffset + 4 < raw.Length &&

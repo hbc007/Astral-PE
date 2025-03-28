@@ -27,8 +27,6 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-
 public static class Logging {
     // Lock object to ensure thread-safety during logging.
     private static readonly object _lock = new object();
@@ -52,12 +50,12 @@ public static class Logging {
             // Process each part that follows a color tag
             for (int i = 1; i < parts.Length; i++) {
                 // Find the closing parenthesis of the color tag
-                int close = parts[i].IndexOf(")");
+                int close = parts[i].IndexOf(')');
                 if (close > 0) {
                     // Extract the color name (before the closing parenthesis)
-                    string colorName = parts[i].Substring(0, close);
+                    string colorName = parts[i][..close];
                     // Extract the text after the closing parenthesis
-                    string text = parts[i].Substring(close + 1);
+                    string text = parts[i][(close + 1)..];
 
                     // Try to parse the color name to a valid ConsoleColor
                     if (Enum.TryParse<ConsoleColor>(colorName, true, out ConsoleColor color)) {

@@ -27,7 +27,6 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
 public static class StringsWorker {
     /// <summary>
     /// Randomizes the case of each character in the provided string.

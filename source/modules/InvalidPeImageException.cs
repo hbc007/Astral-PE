@@ -27,8 +27,6 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-
 namespace AstralPE.Obfuscator {
     /// <summary>
     /// Exception thrown when the PE image is invalid or incomplete.

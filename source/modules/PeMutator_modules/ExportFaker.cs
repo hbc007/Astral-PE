@@ -53,6 +53,7 @@ namespace AstralPE.Obfuscator.Modules {
 
             // Get the first section header to use its Virtual Address for the fake export directory
             ImageSectionHeader? firstSection = pe.ImageSectionHeaders.FirstOrDefault();
+
             if (firstSection == null)
                 throw new Exception("No section headers found. Cannot fake export directory.");
 
