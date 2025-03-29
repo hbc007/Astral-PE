@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of the Astral-PE project.
  * Copyright (c) 2025 DosX. All rights reserved.
  *
@@ -52,7 +52,20 @@ namespace AstralPE.Obfuscator.Modules {
             if (epOffset >= raw.Length)
                 throw new Exception("EntryPoint offset is out of file bounds.");
 
-            List<byte> instructions = new List<byte> {
+            List<byte> instructions = pe.Is64Bit ? new List<byte> {
+                // PUSH rAX–rDI (0x50–0x57), without 0x54 (PUSH rSP)
+                0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57,
+
+                // Other x64-safe instructions
+                0x90, // NOP
+                0xF8, // CLC
+                0xF9, // STC
+                0xFC, // CLD
+                0xF3, // REP
+                0xF2, // REPNE
+                0x64, // FS override
+                0x65  // GS override
+            } : new List<byte> {
                 // PUSH rAX–rDI (0x50–0x57), without 0x54 (PUSH rSP)
                 0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57,
 
@@ -62,24 +75,24 @@ namespace AstralPE.Obfuscator.Modules {
                 // DEC rAX–rDI (0x48–0x4F), without 0x4C (DEC rSP)
                 0x48, 0x49, 0x4A, 0x4B, 0x4D, 0x4E, 0x4F,
 
-                // Other single-byte instructions
-                0x90, // NOP (No operation)
-                0xF8, // CLC (Clear carry flag)
-                0xF9, // STC (Set carry flag)
-                0xFC, // CLD (Clear direction flag)
-                0x27, // DAA (Decimal adjust AL after addition)
-                0x2F, // DAS (Decimal adjust AL after subtraction)
-                0x3F, // AAS (ASCII adjust AL after subtraction)
-                0x61, // POPAD (Pop all general-purpose registers)
-                0x9C, // PUSHFD (Push EFLAGS to stack)
-                0xF3, // REP / REPE / REPZ
-                0xF2, // REPNE / REPNZ
-                0x2E, // CS segment override
-                0x36, // SS segment override
-                0x3E, // DS segment override
-                0x26, // ES segment override
-                0x64, // FS segment override
-                0x65  // GS segment override
+                // Legacy single-byte x86 instructions
+                0x90, // NOP
+                0xF8, // CLC
+                0xF9, // STC
+                0xFC, // CLD
+                0x27, // DAA
+                0x2F, // DAS
+                0x3F, // AAS
+                0x61, // POPAD
+                0x9C, // PUSHFD
+                0xF3, // REP
+                0xF2, // REPNE
+                0x2E, // CS
+                0x36, // SS
+                0x3E, // DS
+                0x26, // ES
+                0x64, // FS
+                0x65  // GS
             };
 
             // Replace opcode at entry point if it's 0x60 (PUSHAD)
@@ -168,15 +181,77 @@ namespace AstralPE.Obfuscator.Modules {
                 }
             }
 
-            if (epOffset > 0 && epOffset < raw.Length && raw[epOffset - 1] == 0 && raw[epOffset - 2] == 0) {
-                byte patch = instructions[rnd.Next(instructions.Count)];
-                raw[epOffset - 1] = patch;
+            // PATCH: EntryPoint shift mutation w/ multi-level obfuscation (5/2/1-byte options)
+            if (epOffset >= 1 &&
+                raw[epOffset - 5] != 0xE9) { // Skip Microsoft VC++ debug builds by checking for JMP opcode
+                int space = 0;
 
-                // Update EP to point 1 byte earlier
-                pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint--;
-                BitConverter.GetBytes(pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint)
-                    .CopyTo(raw, optStart + 0x10); // 0x10 = offset of AddressOfEntryPoint in Optional Header
+                for (int i = 1; i <= Math.Min(5, epOffset); i++) {
+                    byte b = raw[epOffset - i];
+                    if (b == 0x00 || b == 0x90 || b == 0xCC)
+                        space++;
+                    else
+                        break;
+                }
+
+                if (space >= 5) {
+                    // ---- Inject xor REG, REG + jz + trap byte ----
+                    List<byte> regVariants = new() {
+                        0xC0, // rAX
+                        0xC9, // rCX
+                        0xD2, // rDX
+                        0xDB, // rBX
+                        0xED, // rBP
+                        0xF6, // rSI
+                        0xFF  // rDI
+                    };
+                    byte reg = regVariants[rnd.Next(regVariants.Count)];
+
+                    raw[epOffset - 5] = 0x31; // xor
+                    raw[epOffset - 4] = reg;  // reg/reg
+                    raw[epOffset - 3] = 0x74; // jz short
+                    raw[epOffset - 2] = 0x01; // +1 offset
+                    raw[epOffset - 1] = (byte)rnd.Next(0x00, 0xFF); // junk/trap
+
+                    epOffset -= 5;
+                } else if (space >= 3) {
+                    // ---- Inject universal 2-byte garbage op ----
+                    List<byte[]> epGarbage = new()
+                    {
+                        new byte[] { 0x0F, 0xA2 }, // cpuid
+                        new byte[] { 0x0F, 0x31 }, // rdtsc
+                        new byte[] { 0x66, 0x90 }, // nop (xchg ax, ax)
+                        new byte[] { 0x84, 0xC0 }, // test al, al
+                        new byte[] { 0x85, 0xC0 }, // test eax, eax
+                        new byte[] { 0x09, 0xC0 }, // or eax, eax
+                        new byte[] { 0x33, 0xC0 }, // xor eax, eax
+                        new byte[] { 0x33, 0xC9 }, // xor ecx, ecx
+                        new byte[] { 0x33, 0xD2 }, // xor edx, edx
+                        new byte[] { 0x33, 0xDB }, // xor ebx, ebx
+                        new byte[] { 0x33, 0xF6 }, // xor esi, esi
+                        new byte[] { 0x33, 0xFF }, // xor edi, edi
+                        new byte[] { 0xFC, 0x90 }, // cld; nop
+                        new byte[] { 0xF8, 0x90 }, // clc; nop
+                        new byte[] { 0xF9, 0x90 }, // stc; nop
+                    };
+
+                    byte[] instr = epGarbage[rnd.Next(epGarbage.Count)];
+                    raw[epOffset - 2] = instr[0];
+                    raw[epOffset - 1] = instr[1];
+                    epOffset -= 2;
+
+                } else if (space >= 2) {
+                    raw[epOffset - 1] = 0x90;
+                    epOffset -= 1;
+                }
+
+                uint newEpRva = epOffset.OffsetToRva(pe.ImageSectionHeaders);
+                pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint = newEpRva;
+                BitConverter.GetBytes(newEpRva).CopyTo(raw, optStart + 0x10);
+
             }
+
+
         }
     }
 }
