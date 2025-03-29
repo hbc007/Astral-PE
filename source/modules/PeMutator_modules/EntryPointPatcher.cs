@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the Astral-PE project.
  * Copyright (c) 2025 DosX. All rights reserved.
  *
@@ -95,11 +95,11 @@ namespace AstralPE.Obfuscator.Modules {
                 0x65  // GS
             };
 
-            // PATCH: Replace opcode at entry point if it's 0x60 (PUSHAD)
+            // Replace opcode at entry point if it's 0x60 (PUSHAD)
             if (raw[epOffset] == 0x60)
                 raw[epOffset] = instructions[rnd.Next(instructions.Count)];
 
-            // PATCH: Shuffle PUSH instructions in UPX64 signature
+            // Shuffle PUSH instructions in UPX64 signature
             if (epOffset + 4 < raw.Length &&
                 raw[epOffset + 0] == 0x53 && raw[epOffset + 1] == 0x56 &&
                 raw[epOffset + 2] == 0x57 && raw[epOffset + 3] == 0x55) {
@@ -116,7 +116,7 @@ namespace AstralPE.Obfuscator.Modules {
                     raw[epOffset + i] = pushes[i];
             }
 
-            // PATCH: VC++ or MinGW EP stack alignment mutation + NOP/trap sequence replacement
+            // VC++ or MinGW EP stack alignment mutation + NOP/trap sequence replacement
             if (pe.Is64Bit && epOffset + 32 < raw.Length) {
                 // Check if entry point starts with VC++-style prologue:
                 // sub rsp, imm8; call; add rsp, imm8
@@ -134,6 +134,7 @@ namespace AstralPE.Obfuscator.Modules {
                 // Proceed only if one of the patterns matched
                 if (isVcStyle || isMinGwStyle) {
                     byte originalStackVal = raw[epOffset + 3];
+
                     List<byte> stackVariants = new() { 0x28, 0x30, 0x38, 0x40, 0x48, 0x50, 0x58 };
                     stackVariants.Remove(originalStackVal);
                     byte newStackVal = stackVariants[rnd.Next(stackVariants.Count)];
@@ -145,30 +146,34 @@ namespace AstralPE.Obfuscator.Modules {
                     } else if (isMinGwStyle) {
                         for (uint i = epOffset + 7; i < epOffset + 32 && i + 4 < raw.Length; i++) {
                             if (raw[i] == 0x48 && raw[i + 1] == 0x83 && raw[i + 2] == 0xC4 &&
+                                
                                 raw[i + 3] == originalStackVal && raw[i + 4] == 0xC3) {
                                 raw[i + 3] = newStackVal;
+
                                 break;
                             }
                         }
                     }
 
-                    // ---- [ NOP MUTATION for MinGW ] ----
+                    // // Nop mutation for MinGW
                     if (isMinGwStyle) {
                         for (uint i = epOffset + 12; i < epOffset + 32 && i + 2 < raw.Length; i++) {
                             if (raw[i] == 0x90 && raw[i + 1] == 0x90 && raw[i + 2] == 0x90) {
                                 int variant = rnd.Next(4);
+
                                 switch (variant) {
                                     case 0: raw[i] = 0x0F; raw[i + 1] = 0x1F; raw[i + 2] = 0x00; break;
                                     case 1: raw[i] = 0x66; raw[i + 1] = 0x90; raw[i + 2] = 0x90; break;
                                     case 2: raw[i] = 0x90; raw[i + 1] = 0x66; raw[i + 2] = 0x90; break;
                                     case 3: break; // leave 90 90 90 as-is
                                 }
+
                                 break;
                             }
                         }
                     }
 
-                    // ---- [ DEAD BYTES GARBAGE AFTER VC++ JMP ] ----
+                    // Dead bytes garbage after JMP for VC++
                     if (isVcStyle &&
                         raw[epOffset + 13] == 0xE9 && // jmp
                         raw[epOffset + 18] == 0xCC && raw[epOffset + 19] == 0xCC) { // 2x int3
@@ -181,7 +186,7 @@ namespace AstralPE.Obfuscator.Modules {
                 }
             }
 
-            // PATCH: EntryPoint shift mutation w/ multi-level obfuscation (5/2/1-byte options)
+            // EntryPoint shift mutation w/ multi-level obfuscation (5/2/1-byte options)
             if (epOffset >= 1 &&
                 raw[epOffset - 5] != 0xE9) { // Skip Microsoft VC++ 19.35.32217 debug builds by checking for CALL opcode
                 int space = 0;
@@ -199,9 +204,8 @@ namespace AstralPE.Obfuscator.Modules {
                     }
                 }
 
-
                 if (space >= 5) {
-                    // ---- Inject xor REG, REG + jz + trap byte ----
+                    // Inject xor REG, REG + jz + trap byte
                     List<byte> regVariants = new() {
                         0xC0, // rAX
                         0xC9, // rCX
@@ -221,9 +225,8 @@ namespace AstralPE.Obfuscator.Modules {
 
                     epOffset -= 5;
                 } else if (space >= 3) {
-                    // ---- Inject universal 2-byte garbage op ----
-                    List<byte[]> epGarbage = new()
-                    {
+                    // Inject universal 2-byte garbage op
+                    List<byte[]> epGarbage = new() {
                         new byte[] { 0x0F, 0xA2 }, // cpuid
                         new byte[] { 0x0F, 0x31 }, // rdtsc
                         new byte[] { 0x66, 0x90 }, // nop (xchg ax, ax)

@@ -45,7 +45,7 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">Offset to the section table.</param>
         /// <param name="rnd">Random number generator (not used).</param>
         public void Apply(ref byte[] raw, PeNet.PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            // Validate section headers
+            // Ensure the PE file is valid
             if (pe.ImageSectionHeaders == null)
                 throw new InvalidPeImageException();
 
@@ -68,6 +68,7 @@ namespace AstralPE.Obfuscator.Modules {
                             break;
                         }
                     }
+
                     if (match) {
                         Array.Clear(raw, i, value.Length); // zero out the string
                         break;

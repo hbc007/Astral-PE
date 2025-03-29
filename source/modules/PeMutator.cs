@@ -102,7 +102,6 @@ namespace AstralPE.Obfuscator {
                 modules.Add(module);
         }
 
-
         /// <summary>
         /// Applies all registered transformations to the PE file.
         /// </summary>

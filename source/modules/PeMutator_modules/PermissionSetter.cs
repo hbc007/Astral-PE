@@ -46,8 +46,8 @@ namespace AstralPE.Obfuscator.Modules {
             if (pe.ImageSectionHeaders == null || pe.ImageSectionHeaders.Length == 0)
                 throw new InvalidPeImageException();
 
-            const int sectionHeaderSize = 40;         // IMAGE_SECTION_HEADER size is 40 bytes
-            const int characteristicsOffset = 36;     // Characteristics field offset within IMAGE_SECTION_HEADER
+            const int sectionHeaderSize = 40,         // IMAGE_SECTION_HEADER size is 40 bytes
+                      characteristicsOffset = 36;     // Characteristics field offset within IMAGE_SECTION_HEADER
 
             // Define the new permissions:
             // R = Read, W = Write, E = Execute, + mark as code section
