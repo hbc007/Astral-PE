@@ -1,4 +1,4 @@
-/*
+ï»¿/*
  * This file is part of the Astral-PE project.
  * Copyright (c) 2025 DosX. All rights reserved.
  *
@@ -53,13 +53,13 @@ namespace AstralPE.Obfuscator.Modules {
                 throw new Exception("EntryPoint offset is out of file bounds.");
 
             List<byte> instructions = new List<byte> {
-                // PUSH rAX–rDI (0x50–0x57), without 0x54 (PUSH rSP)
+                // PUSH rAXâ€“rDI (0x50â€“0x57), without 0x54 (PUSH rSP)
                 0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57,
 
-                // INC rAX–rDI (0x40–0x47), without 0x44 (INC rSP)
+                // INC rAXâ€“rDI (0x40â€“0x47), without 0x44 (INC rSP)
                 0x40, 0x41, 0x42, 0x43, 0x45, 0x46, 0x47,
 
-                // DEC rAX–rDI (0x48–0x4F), without 0x4C (DEC rSP)
+                // DEC rAXâ€“rDI (0x48â€“0x4F), without 0x4C (DEC rSP)
                 0x48, 0x49, 0x4A, 0x4B, 0x4D, 0x4E, 0x4F,
 
                 // Other single-byte instructions
@@ -103,63 +103,80 @@ namespace AstralPE.Obfuscator.Modules {
                     raw[epOffset + i] = pushes[i];
             }
 
-            // PATCH: VC++ or MinGW EP stack alignment mutation + NOP sequence replacement
+            // PATCH: VC++ or MinGW EP stack alignment mutation + NOP/trap sequence replacement
             if (pe.Is64Bit && epOffset + 32 < raw.Length) {
                 // Check if entry point starts with VC++-style prologue:
                 // sub rsp, imm8; call; add rsp, imm8
                 bool isVcStyle =
-                     raw[epOffset + 0] == 0x48 && raw[epOffset + 1] == 0x83 && raw[epOffset + 2] == 0xEC && // sub rsp, imm8
-                     raw[epOffset + 4] == 0xE8 &&                                                           // call ...
-                     raw[epOffset + 9] == 0x48 && raw[epOffset + 10] == 0x83 && raw[epOffset + 11] == 0xC4; // add rsp, imm8
+                     raw[epOffset + 0] == 0x48 && raw[epOffset + 1] == 0x83 && raw[epOffset + 2] == 0xEC &&
+                     raw[epOffset + 4] == 0xE8 &&
+                     raw[epOffset + 9] == 0x48 && raw[epOffset + 10] == 0x83 && raw[epOffset + 11] == 0xC4;
 
                 // Check if entry point starts with MinGW-style prologue:
                 // sub rsp, imm8; mov rax, [rip+...]
                 bool isMinGwStyle =
-                     raw[epOffset + 0] == 0x48 && raw[epOffset + 1] == 0x83 && raw[epOffset + 2] == 0xEC && // sub rsp, imm8
-                     raw[epOffset + 4] == 0x48 && raw[epOffset + 5] == 0x8B && raw[epOffset + 6] == 0x05;   // mov rax, [rip+...]
+                     raw[epOffset + 0] == 0x48 && raw[epOffset + 1] == 0x83 && raw[epOffset + 2] == 0xEC &&
+                     raw[epOffset + 4] == 0x48 && raw[epOffset + 5] == 0x8B && raw[epOffset + 6] == 0x05;
 
                 // Proceed only if one of the patterns matched
                 if (isVcStyle || isMinGwStyle) {
-                    // Extract original stack size from SUB
                     byte originalStackVal = raw[epOffset + 3];
-
-                    // Generate alternative valid stack sizes (must be aligned and >= 0x28)
                     List<byte> stackVariants = new() { 0x28, 0x30, 0x38, 0x40, 0x48, 0x50, 0x58 };
-                    stackVariants.Remove(originalStackVal); // Avoid same value
+                    stackVariants.Remove(originalStackVal);
                     byte newStackVal = stackVariants[rnd.Next(stackVariants.Count)];
 
-                    // Patch SUB
                     raw[epOffset + 3] = newStackVal;
 
                     if (isVcStyle) {
-                        // VC++: patch matching ADD
                         raw[epOffset + 12] = newStackVal;
                     } else if (isMinGwStyle) {
-                        // MinGW: search for matching ADD near EP
                         for (uint i = epOffset + 7; i < epOffset + 32 && i + 4 < raw.Length; i++) {
-                            if (raw[i + 0] == 0x48 && raw[i + 1] == 0x83 && raw[i + 2] == 0xC4 && // add rsp, imm8
-                                raw[i + 3] == originalStackVal &&
-                                raw[i + 4] == 0xC3) // ret
-                            {
+                            if (raw[i] == 0x48 && raw[i + 1] == 0x83 && raw[i + 2] == 0xC4 &&
+                                raw[i + 3] == originalStackVal && raw[i + 4] == 0xC3) {
                                 raw[i + 3] = newStackVal;
                                 break;
                             }
                         }
                     }
 
-                    // Replace 3x NOPs (0x90 90 90) with optimized 3-byte NOP (0F 1F 00)
-                    // Found typically after call instruction
-                    for (uint i = epOffset + 12; i < epOffset + 32 && i + 2 < raw.Length; i++) {
-                        if (raw[i] == 0x90 && raw[i + 1] == 0x90 && raw[i + 2] == 0x90) {
-                            raw[i + 0] = 0x0F;
-                            raw[i + 1] = 0x1F;
-                            raw[i + 2] = 0x00;
-                            break;
+                    // ---- [ NOP MUTATION for MinGW ] ----
+                    if (isMinGwStyle) {
+                        for (uint i = epOffset + 12; i < epOffset + 32 && i + 2 < raw.Length; i++) {
+                            if (raw[i] == 0x90 && raw[i + 1] == 0x90 && raw[i + 2] == 0x90) {
+                                int variant = rnd.Next(4);
+                                switch (variant) {
+                                    case 0: raw[i] = 0x0F; raw[i + 1] = 0x1F; raw[i + 2] = 0x00; break;
+                                    case 1: raw[i] = 0x66; raw[i + 1] = 0x90; raw[i + 2] = 0x90; break;
+                                    case 2: raw[i] = 0x90; raw[i + 1] = 0x66; raw[i + 2] = 0x90; break;
+                                    case 3: break; // leave 90 90 90 as-is
+                                }
+                                break;
+                            }
                         }
+                    }
+
+                    // ---- [ DEAD BYTES GARBAGE AFTER VC++ JMP ] ----
+                    if (isVcStyle &&
+                        raw[epOffset + 13] == 0xE9 && // jmp
+                        raw[epOffset + 18] == 0xCC && raw[epOffset + 19] == 0xCC) { // 2x int3
+                        Span<byte> garbage = stackalloc byte[2];
+                        rnd.NextBytes(garbage);
+
+                        raw[epOffset + 18] = garbage[0]; // first int3
+                        raw[epOffset + 19] = garbage[1]; // second int3
                     }
                 }
             }
 
+            if (epOffset > 0 && epOffset < raw.Length && raw[epOffset - 1] == 0 && raw[epOffset - 2] == 0) {
+                byte patch = instructions[rnd.Next(instructions.Count)];
+                raw[epOffset - 1] = patch;
+
+                // Update EP to point 1 byte earlier
+                pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint--;
+                BitConverter.GetBytes(pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint)
+                    .CopyTo(raw, optStart + 0x10); // 0x10 = offset of AddressOfEntryPoint in Optional Header
+            }
         }
     }
 }
