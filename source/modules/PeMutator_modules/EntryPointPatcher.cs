@@ -95,11 +95,11 @@ namespace AstralPE.Obfuscator.Modules {
                 0x65  // GS
             };
 
-            // Replace opcode at entry point if it's 0x60 (PUSHAD)
+            // PATCH: Replace opcode at entry point if it's 0x60 (PUSHAD)
             if (raw[epOffset] == 0x60)
                 raw[epOffset] = instructions[rnd.Next(instructions.Count)];
 
-            // Second patch: Shuffle PUSH instructions in UPX64 signature
+            // PATCH: Shuffle PUSH instructions in UPX64 signature
             if (epOffset + 4 < raw.Length &&
                 raw[epOffset + 0] == 0x53 && raw[epOffset + 1] == 0x56 &&
                 raw[epOffset + 2] == 0x57 && raw[epOffset + 3] == 0x55) {
@@ -183,16 +183,22 @@ namespace AstralPE.Obfuscator.Modules {
 
             // PATCH: EntryPoint shift mutation w/ multi-level obfuscation (5/2/1-byte options)
             if (epOffset >= 1 &&
-                raw[epOffset - 5] != 0xE9) { // Skip Microsoft VC++ debug builds by checking for JMP opcode
+                raw[epOffset - 5] != 0xE9) { // Skip Microsoft VC++ 19.35.32217 debug builds by checking for CALL opcode
                 int space = 0;
 
-                for (int i = 1; i <= Math.Min(5, epOffset); i++) {
-                    byte b = raw[epOffset - i];
-                    if (b == 0x00 || b == 0x90 || b == 0xCC)
-                        space++;
-                    else
-                        break;
+                if (epOffset >= 1) {
+                    byte fill = raw[epOffset - 1];
+
+                    if (fill == 0x00 || fill == 0x90 || fill == 0xCC) {
+                        for (int i = 1; i <= Math.Min(5, epOffset); i++) {
+                            if (raw[epOffset - i] == fill)
+                                space++;
+                            else
+                                break;
+                        }
+                    }
                 }
+
 
                 if (space >= 5) {
                     // ---- Inject xor REG, REG + jz + trap byte ----
@@ -240,7 +246,9 @@ namespace AstralPE.Obfuscator.Modules {
                     raw[epOffset - 1] = instr[1];
                     epOffset -= 2;
 
-                } else if (space >= 2) {
+                } else if (space >= 2 || // If free space is 2 bytes, inject 1-byte NOP
+                          (raw[epOffset - 6] == 0xE8) && raw[epOffset - 1] == 0xCC) { // Microsoft VC++ 19.36.33523, 32-bit support; CALL + 0xCC, we can change last byte
+
                     raw[epOffset - 1] = 0x90;
                     epOffset -= 1;
                 }
@@ -250,8 +258,6 @@ namespace AstralPE.Obfuscator.Modules {
                 BitConverter.GetBytes(newEpRva).CopyTo(raw, optStart + 0x10);
 
             }
-
-
         }
     }
 }
