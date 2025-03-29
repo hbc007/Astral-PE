@@ -47,7 +47,7 @@ Astral-PE applies precise, compliant, and execution-safe mutations:
 | 📋 Version Info         | Erased from optional header                                              |
 | 📁 Original Filename    | Located and zeroed in binary tail                                        |
 | 🔎 Debug Info           | PDB paths wiped, Debug Directory erased                                  |
-| 🚀 Entry Point Patch    | Replaces or shuffles PUSH/PROLOGUE bytes (e.g. UPX)                      |
+| 🚀 Entry Point Patch    | Replaces or shuffles prologue, changes `AddressOfEntryPoint`...          |
 | 🧪 Import Table         | DLL names mutated: case, prefix, randomized formatting                   |
 | 🏷 Export Table         | Faked if absent (baits certain scanners)                                  |
 | 📚 Data Directory       | All unused entries cleaned                                               |
