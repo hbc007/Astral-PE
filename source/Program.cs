@@ -100,7 +100,6 @@ namespace AstralPE {
                 PeMutator? obfuscator = new PeMutator(raw, pe, rnd, inputPath);
                 raw = obfuscator.Apply();
 
-
                 try {
                     // Write the obfuscated data to the output file.
                     File.WriteAllBytes(outputPath, raw);

@@ -43,6 +43,16 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="optStart">Start offset of the Optional Header.</param>
         /// <param name="sectionTableOffset">Offset to the section table.</param>
         /// <param name="rnd">Random number generator (not used in this method).</param>
+        /// <summary>
+        /// If the PE file has no export directory, this method fakes the export directory
+        /// by setting the export RVA to the first section's virtual address and setting a fake size.
+        /// </summary>
+        /// <param name="raw">The raw byte array of the PE file.</param>
+        /// <param name="pe">The parsed PE file.</param>
+        /// <param name="e_lfanew">Offset to IMAGE_NT_HEADERS.</param>
+        /// <param name="optStart">Start offset of the Optional Header.</param>
+        /// <param name="sectionTableOffset">Offset to the section table.</param>
+        /// <param name="rnd">Random number generator (used for randomized offset).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
             if (pe.ImageSectionHeaders == null)
                 throw new InvalidPeImageException();
@@ -51,14 +61,32 @@ namespace AstralPE.Obfuscator.Modules {
             if (pe.ExportedFunctions != null)
                 return;
 
-            // Get the first section header to use its Virtual Address for the fake export directory
+            // Get the first section header to use its Virtual Address and RawData
             ImageSectionHeader? firstSection = pe.ImageSectionHeaders.FirstOrDefault();
 
             if (firstSection == null)
                 throw new Exception("No section headers found. Cannot fake export directory.");
 
-            // Set the fake export RVA to the first section's Virtual Address
-            uint fakeExportRVA = firstSection.VirtualAddress;
+            // Calculate max range for randomized export offset inside the first section
+            int maxOffsetInSection = (int)Math.Min(firstSection.VirtualSize, firstSection.SizeOfRawData),
+                availableRoom = maxOffsetInSection - 0x28; // minimum size for IMAGE_EXPORT_DIRECTORY
+
+            if (availableRoom < 0x10)
+                throw new Exception("First section too small to embed export directory safely.");
+
+            List<ImageSectionHeader>? candidates = pe.ImageSectionHeaders
+                .Where(s => s.SizeOfRawData > 0x100 && s.VirtualSize > 0x40)
+                .ToList();
+
+            if (candidates.Count == 0)
+                throw new Exception("No section large enough to embed export directory.");
+
+            ImageSectionHeader? chosenSection = candidates[rnd.Next(candidates.Count)];
+
+            // Pick a random offset from the start of section
+            int offsetInSection = rnd.Next(0x10, (int)Math.Min(chosenSection.VirtualSize, chosenSection.SizeOfRawData) - 0x28);
+
+            uint fakeExportRVA = firstSection.VirtualAddress + (uint)offsetInSection;
 
             // Calculate the offset for the export directory in the Optional Header
             int exportDirOffset = optStart + 0x60 + 0 * 8;

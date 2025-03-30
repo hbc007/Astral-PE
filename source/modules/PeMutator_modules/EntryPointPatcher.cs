@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the Astral-PE project.
  * Copyright (c) 2025 DosX. All rights reserved.
  *
@@ -196,44 +196,55 @@ namespace AstralPE.Obfuscator.Modules {
                 }
 
                 if (space >= 5) {
-                    // Inject xor REG, REG + jz + trap byte
+
                     List<byte> regVariants = new() {
-                        0xC0, // rAX
-                        0xC9, // rCX
-                        0xD2, // rDX
-                        0xDB, // rBX
-                        0xED, // rBP
-                        0xF6, // rSI
-                        0xFF  // rDI
+                        0xC0, // EAX
+                        0xC9, // ECX
+                        0xD2, // EDX
+                        0xDB, // EBX
+                        0xED, // EBP
+                        0xF6, // ESI
+                        0xFF  // EDI
                     };
+
                     byte reg = regVariants[rnd.Next(regVariants.Count)];
 
-                    raw[epOffset - 5] = 0x31; // xor
-                    raw[epOffset - 4] = reg;  // reg/reg
-                    raw[epOffset - 3] = 0x74; // jz short
-                    raw[epOffset - 2] = 0x01; // +1 offset
-                    raw[epOffset - 1] = (byte)rnd.Next(0x00, 0xFF); // junk/trap
+                    int junkCount = Math.Min(space - 2, 2), // max 2 bytes of junk (safe, can be changed)
+                        totalSize = 2 + 2 + junkCount, // xor + jz + junk
+                        breakerOffset = (int)epOffset - totalSize;
 
-                    epOffset -= 5;
+                    raw[breakerOffset + 0] = 0x31;     // xor
+                    raw[breakerOffset + 1] = reg;      // rax/rcx/.../esi/edi
+                    raw[breakerOffset + 2] = 0x74;     // jz
+                    raw[breakerOffset + 3] = (byte)junkCount;
+
+                    for (int i = 0; i < junkCount; i++)
+                        raw[breakerOffset + 4 + i] = (byte)rnd.Next(0x00, 0xFF);
+
+                    epOffset -= (uint)totalSize;
+
                 } else if (space >= 3) {
                     // Inject universal 2-byte garbage op
-                    List<byte[]> epGarbage = new() {
-                        new byte[] { 0x0F, 0xA2 }, // cpuid
-                        new byte[] { 0x0F, 0x31 }, // rdtsc
-                        new byte[] { 0x66, 0x90 }, // nop (xchg ax, ax)
-                        new byte[] { 0x84, 0xC0 }, // test al, al
-                        new byte[] { 0x85, 0xC0 }, // test eax, eax
-                        new byte[] { 0x09, 0xC0 }, // or eax, eax
-                        new byte[] { 0x33, 0xC0 }, // xor eax, eax
-                        new byte[] { 0x33, 0xC9 }, // xor ecx, ecx
-                        new byte[] { 0x33, 0xD2 }, // xor edx, edx
-                        new byte[] { 0x33, 0xDB }, // xor ebx, ebx
-                        new byte[] { 0x33, 0xF6 }, // xor esi, esi
-                        new byte[] { 0x33, 0xFF }, // xor edi, edi
-                        new byte[] { 0xFC, 0x90 }, // cld; nop
-                        new byte[] { 0xF8, 0x90 }, // clc; nop
-                        new byte[] { 0xF9, 0x90 }, // stc; nop
-                    };
+                    List<byte[]> epGarbage = [
+                        [0x0F, 0xA2], // cpuid
+                        [0x0F, 0x31], // rdtsc
+                        [0x66, 0x90], // nop (xchg ax, ax)
+                        [0x84, 0xC0], // test al, al
+                        [0x85, 0xC0], // test eax, eax
+                        [0x09, 0xC0], // or eax, eax
+                        [0x33, 0xC0], // xor eax, eax
+                        [0x33, 0xC9], // xor ecx, ecx
+                        [0x33, 0xD2], // xor edx, edx
+                        [0x33, 0xDB], // xor ebx, ebx
+                        [0x33, 0xF6], // xor esi, esi
+                        [0x33, 0xFF], // xor edi, edi
+                        [0xFC, 0x90], // cld; nop
+                        [0xF8, 0x90], // clc; nop
+                        [0xF9, 0x90], // stc; nop
+                        [0x90, 0xFC], // nop; cld
+                        [0x90, 0xF8], // nop; clc
+                        [0x90, 0xF9] // nop; stc
+                    ];
 
                     byte[] instr = epGarbage[rnd.Next(epGarbage.Count)];
                     raw[epOffset - 2] = instr[0];
@@ -247,20 +258,20 @@ namespace AstralPE.Obfuscator.Modules {
                 } else { // If no free space
 
                     // Try to slide EntryPoint back over multiple consecutive NOP sleds
-                    byte[][] knownNops = new byte[][] {
-                        new byte[] { 0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 }, // 9-byte -> nop dword ptr [rax + rax*1 + 0x0]
-                        new byte[] { 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 },       // 8-byte -> nop dword ptr [rax + rax*1 + 0x0]
-                        new byte[] { 0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00 },             // 7-byte -> nop dword ptr [rax + 0x0]
-                        new byte[] { 0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00 },                   // 6-byte -> nop word ptr [rax + rax*1 + 0x0]
-                        new byte[] { 0x0F, 0x1F, 0x44, 0x00, 0x00 },                         // 5-byte -> nop dword ptr [rax + 0x0]
-                        new byte[] { 0x0F, 0x1F, 0x40, 0x00 },                               // 4-byte -> nop dword ptr [rax + 0x0]
-                        new byte[] { 0x0F, 0x1F, 0x00 },                                     // 3-byte -> nop dword ptr [rax]
-                        new byte[] { 0x66, 0x90 },                                           // 2-byte -> xchg ax, ax
-                        new byte[] { 0x90 }                                                  // 1-byte -> nop
-                    };
+                    byte[][] knownNops = [
+                        [0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00], // 9-byte -> nop dword ptr [rax + rax*1 + 0x0]
+                        [0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00],       // 8-byte -> nop dword ptr [rax + rax*1 + 0x0]
+                        [0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00],             // 7-byte -> nop dword ptr [rax + 0x0]
+                        [0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00],                   // 6-byte -> nop word ptr [rax + rax*1 + 0x0]
+                        [0x0F, 0x1F, 0x44, 0x00, 0x00],                         // 5-byte -> nop dword ptr [rax + 0x0]
+                        [0x0F, 0x1F, 0x40, 0x00],                               // 4-byte -> nop dword ptr [rax + 0x0]
+                        [0x0F, 0x1F, 0x00],                                     // 3-byte -> nop dword ptr [rax]
+                        [0x66, 0x90],                                           // 2-byte -> xchg ax, ax
+                        [0x90]                                                  // 1-byte -> nop
+                    ];
 
-                    bool shifted = false;
-                    bool foundAny;
+                    bool shifted = false,
+                         foundAny;
 
                     do {
                         foundAny = false;

@@ -34,98 +34,146 @@ namespace AstralPE.Obfuscator.Modules {
     public static class Patcher {
 
         /// <summary>
-        /// Replaces all occurrences of a byte sequence (`find`) with another byte sequence (`replace`) in the given data.
-        /// The operation is performed in parallel for performance improvements when working with large files.
+        /// Replaces all occurrences of a byte sequence in the entire buffer using parallel search.
         /// </summary>
-        /// <param name="data">The byte array to search within and mutate.</param>
-        /// <param name="find">The byte sequence to find in the data.</param>
-        /// <param name="replace">The byte sequence to replace the `find` sequence with.</param>
+        /// <param name="data">The buffer to search and replace in.</param>
+        /// <param name="find">The byte sequence to find.</param>
+        /// <param name="replace">The byte sequence to replace with.</param>
         public static void ReplaceBytes(byte[] data, byte[] find, byte[] replace) {
-            // If the `find` or `replace` arrays are empty, or the `data` is too small to contain the `find` sequence, exit early
             if (find.Length == 0 || replace.Length == 0 || data.Length < find.Length)
                 return;
 
-            ConcurrentBag<int>? matches = new ConcurrentBag<int>(); // Used to store the indices of all matches found
-            int len = find.Length, // The length of the `find` sequence
-                limit = data.Length - len; // The last index where a match could occur in the `data` array
+            int len = find.Length,
+                limit = data.Length - len;
+            ConcurrentBag<int> matches = new ConcurrentBag<int>();
 
-            // Parallel processing to find all occurrences of the `find` sequence
-            Parallel.ForEach(
-                Partitioner.Create(0, limit, 8192), // Divide the data into ranges for parallel processing
-                range => {
-                    for (int i = range.Item1; i < range.Item2; i++) {
-                        int j = 0;
-                        while (j < len && data[i + j] == find[j]) j++; // Compare bytes to find a match
-                        if (j == len) // If the entire sequence matches, add the starting index to the matches list
-                            matches.Add(i);
+            Parallel.ForEach(Partitioner.Create(0, limit, 8192), range => {
+                for (int i = range.Item1; i < range.Item2; i++) {
+                    bool match = true;
+                    for (int j = 0; j < len; j++) {
+                        if (data[i + j] != find[j]) {
+                            match = false;
+                            break;
+                        }
                     }
-                });
+                    if (match)
+                        matches.Add(i);
+                }
+            });
 
-            // After collecting all match indices, replace the `find` sequence with `replace`
-            foreach (int index in matches.OrderBy(i => i)) { // Ensure replacements are done in order of indices
-                Buffer.BlockCopy(replace, 0, data, index, Math.Min(replace.Length, len)); // Replace with the `replace` sequence
+            foreach (int index in matches.OrderBy(i => i)) {
+                Buffer.BlockCopy(replace, 0, data, index, Math.Min(replace.Length, len));
             }
         }
 
         /// <summary>
-        /// Finds the first occurrence of a byte pattern within a larger byte array.
+        /// Replaces all occurrences of a byte sequence within a PE section using parallel search.
         /// </summary>
-        /// <param name="haystack">The byte array to search through.</param>
-        /// <param name="needle">The byte sequence to search for.</param>
-        /// <returns>The index of the first match if found; otherwise -1.</returns>
+        /// <param name="data">The buffer to search and replace in.</param>
+        /// <param name="section">The section to search and replace in.</param>
+        /// <param name="pattern">The byte sequence to find.</param>
+        public static void ReplaceBytesInSection(byte[] data, ImageSectionHeader section, byte[] pattern, byte[] replacement) {
+            if (pattern.Length == 0 || replacement.Length == 0 || data.Length < section.PointerToRawData + pattern.Length)
+                return;
+
+            int len = pattern.Length;
+            int start = (int)section.PointerToRawData;
+            int end = Math.Min(data.Length - len, (int)(section.PointerToRawData + section.SizeOfRawData - len));
+            ConcurrentBag<int> matches = new ConcurrentBag<int>();
+
+            Parallel.ForEach(Partitioner.Create(start, end, 8192), range => {
+                for (int i = range.Item1; i < range.Item2; i++) {
+                    bool match = true;
+                    for (int j = 0; j < len; j++) {
+                        if (data[i + j] != pattern[j]) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match)
+                        matches.Add(i);
+                }
+            });
+
+            foreach (int index in matches.OrderBy(i => i)) {
+                for (int j = 0; j < len && j < replacement.Length; j++) {
+                    data[index + j] = replacement[j];
+                }
+            }
+        }
+
+        /// <summary>
+        /// Finds the first occurrence of a byte pattern in the buffer.
+        /// </summary>
+        /// <param name="haystack">The buffer to search in.</param>
+        /// <param name="needle">The byte pattern to find.</param>
+        /// <returns>The index of the first occurrence of the pattern, or -1 if not found.</returns>
         public static int IndexOf(byte[] haystack, byte[] needle) {
-            // If search target is invalid or longer than the haystack, return not found
-            if (needle == null || needle.Length == 0 || haystack.Length < needle.Length)
+            return IndexOf(haystack, needle, 0);
+        }
+
+        /// <summary>
+        /// Finds the first occurrence of a byte pattern in the buffer starting at the specified index.
+        /// </summary>
+        /// <param name="haystack">The buffer to search in.</param>
+        /// <param name="needle">The byte pattern to find.</param>
+        /// <param name="startIndex">The index to start searching from.</param>
+        public static int IndexOf(byte[] haystack, byte[] needle, int startIndex) {
+            if (needle == null || needle.Length == 0 || haystack.Length < needle.Length || startIndex < 0)
                 return -1;
 
-            int len = needle.Length;
-            int limit = haystack.Length - len;
+            int len = needle.Length,
+                limit = haystack.Length - len,
+                result = -1;
 
-            // Scan the haystack for the needle sequence
-            for (int i = 0; i <= limit; i++) {
-                bool match = true;
-                for (int j = 0; j < len; j++) {
-                    if (haystack[i + j] != needle[j]) {
-                        match = false;
-                        break;
+            Parallel.ForEach(Partitioner.Create(startIndex, limit + 1, 8192), (range, state) => {
+                for (int i = range.Item1; i < range.Item2; i++) {
+                    bool match = true;
+                    for (int j = 0; j < len; j++) {
+                        if (haystack[i + j] != needle[j]) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        Interlocked.CompareExchange(ref result, i, -1);
+                        state.Stop();
+                        return;
                     }
                 }
-                if (match)
-                    return i;
-            }
-            return -1; // No match found
+            });
+
+            return result;
         }
 
         /// <summary>
-        /// Converts a raw file offset to a Relative Virtual Address (RVA) based on section headers.
+        /// Converts a file offset to a relative virtual address (RVA).
         /// </summary>
         /// <param name="offset">The file offset to convert.</param>
-        /// <param name="sections">The section headers from the PE file.</param>
-        /// <returns>The calculated RVA, or 0 if not resolvable.</returns>
+        /// <param name="sections">The array of section headers to use for conversion.</param>
         public static uint OffsetToRva(uint offset, ImageSectionHeader[] sections) {
-            // Validate input
             if (sections == null || sections.Length == 0)
                 throw new ArgumentException("Section headers are missing.");
 
-            // Loop through each section to find the one containing the offset
             foreach (var sec in sections) {
                 if (offset >= sec.PointerToRawData && offset < sec.PointerToRawData + sec.SizeOfRawData)
-                    return sec.VirtualAddress + (offset - sec.PointerToRawData); // Convert offset to RVA
+                    return sec.VirtualAddress + (offset - sec.PointerToRawData);
             }
-            return 0; // No matching section found
+
+            return 0;
         }
 
         /// <summary>
-        /// Converts a Relative Virtual Address (RVA) to a file offset using the section headers.
+        /// Converts a relative virtual address (RVA) to a file offset.
         /// </summary>
         /// <param name="rva">The RVA to convert.</param>
-        /// <param name="sections">The PE section headers.</param>
-        /// <returns>The corresponding file offset, or 0 if not found.</returns>
+        /// <param name="sections">The array of section headers to use for conversion.</param>
         public static uint RvaToOffset(uint rva, ImageSectionHeader[] sections) {
             foreach (var section in sections) {
                 if (rva >= section.VirtualAddress && rva < section.VirtualAddress + section.VirtualSize)
                     return section.PointerToRawData + (rva - section.VirtualAddress);
             }
+
             return 0;
         }
     }

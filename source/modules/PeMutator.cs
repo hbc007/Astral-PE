@@ -73,9 +73,13 @@ namespace AstralPE.Obfuscator {
         /// Registers all mutation modules in the order they should be applied.
         /// </summary>
         private void RegisterModules() {
-            IAstralPeModule[]? list = new IAstralPeModule[] {
+            IAstralPeModule[]? targetedObfuscationModules = [
                 new LegacyVbCompilerMutator(),
-                new UpxPackerMutator(),
+                new DelphiLazarusMutator(),
+                new UpxPackerMutator()
+            ];
+
+            IAstralPeModule[]? standartObfuscationModules = [
                 new LinkerVersionInfoWiper(),
                 new LargeAddressAwareSetter(),
                 new MemoryReserveExpander(),
@@ -96,9 +100,12 @@ namespace AstralPE.Obfuscator {
                 new TlsCleaner(),
                 new ExportFaker(),
                 new SectionNameWiper() // Must be last
-            };
+            ];
 
-            foreach (IAstralPeModule? module in list)
+            foreach (IAstralPeModule? module in targetedObfuscationModules)
+                modules.Add(module);
+
+            foreach (IAstralPeModule? module in standartObfuscationModules)
                 modules.Add(module);
         }
 
