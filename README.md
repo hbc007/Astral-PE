@@ -6,7 +6,7 @@ Astral-PE is a **low-level mutator** (headers obfuscator and patcher) for Window
 
 It **does not pack, encrypt or inject**. Instead, it mutates low-hanging but critical structures like timestamps, headers, section flags, debug info, import/export names, and more.
 
-> #### 🛠 [**Download Astral-PE build for Windows x64**](https://github.com/DosX-dev/Astral-PE/releases/tag/Stable)
+> #### 🛠 [**Download Astral-PE build for Windows/Linux x64**](https://github.com/DosX-dev/Astral-PE/releases/tag/Stable)
 
 ## 🔧 In what cases is it useful?
 
