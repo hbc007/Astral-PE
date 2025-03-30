@@ -33,6 +33,16 @@ using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
     public class DelphiLazarusMutator : IAstralPeModule {
+
+        /// <summary>
+        /// Applies Delphi/Lazarus meta data cleanup to the PE file.
+        /// </summary>
+        /// <param name="raw">The raw byte array of the PE file.</param>
+        /// <param name="pe">The parsed PE structure.</param>
+        /// <param name="e_lfanew">The offset of the PE header.</param>
+        /// <param name="optStart">The start offset of the Optional Header.</param>
+        /// <param name="sectionTableOffset">The offset of the section table.</param>
+        /// <param name="rnd">Random number generator instance.</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
             // Ensure the section headers are present
             if (pe.ImageSectionHeaders == null)
