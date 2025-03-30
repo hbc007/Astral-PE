@@ -313,7 +313,7 @@ namespace AstralPE.Obfuscator.Modules {
 
                 uint newEpRva = epOffset.OffsetToRva(pe.ImageSectionHeaders);
                 pe.ImageNtHeaders.OptionalHeader.AddressOfEntryPoint = newEpRva;
-                BitConverter.GetBytes   (newEpRva).CopyTo(raw, optStart + 0x10);
+                BitConverter.GetBytes(newEpRva).CopyTo(raw, optStart + 0x10);
             }
         }
     }
