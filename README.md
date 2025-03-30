@@ -89,7 +89,7 @@ Build → Any packer → AstralPE → Sign / Pack → Distribute
 - Not a runtime packer
 - Not a **code** obfuscator
 
-It’s a **surgical metadata cleaner** and **PE-headers obfuscator** for post-processing protected binaries.
+It’s a **surgical metadata cleaner** and **PE-headers/entrypoint obfuscator** for post-processing protected binaries.
 
 ## Before and after
 A file compiled via Microsoft Visual C++ was chosen as a sample for demonstration.
