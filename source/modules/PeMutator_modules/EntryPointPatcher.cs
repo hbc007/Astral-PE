@@ -248,15 +248,15 @@ namespace AstralPE.Obfuscator.Modules {
 
                     // Try to slide EntryPoint back over multiple consecutive NOP sleds
                     byte[][] knownNops = new byte[][] {
-                        new byte[] { 0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 }, // 9-byte
-                        new byte[] { 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 },       // 8-byte
-                        new byte[] { 0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00 },             // 7-byte
-                        new byte[] { 0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00 },                   // 6-byte
-                        new byte[] { 0x0F, 0x1F, 0x44, 0x00, 0x00 },                         // 5-byte
-                        new byte[] { 0x0F, 0x1F, 0x40, 0x00 },                               // 4-byte
-                        new byte[] { 0x0F, 0x1F, 0x00 },                                     // 3-byte
-                        new byte[] { 0x66, 0x90 },                                           // 2-byte
-                        new byte[] { 0x90 }                                                  // 1-byte
+                        new byte[] { 0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 }, // 9-byte -> nop dword ptr [rax + rax*1 + 0x0]
+                        new byte[] { 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 },       // 8-byte -> nop dword ptr [rax + rax*1 + 0x0]
+                        new byte[] { 0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00 },             // 7-byte -> nop dword ptr [rax + 0x0]
+                        new byte[] { 0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00 },                   // 6-byte -> nop word ptr [rax + rax*1 + 0x0]
+                        new byte[] { 0x0F, 0x1F, 0x44, 0x00, 0x00 },                         // 5-byte -> nop dword ptr [rax + 0x0]
+                        new byte[] { 0x0F, 0x1F, 0x40, 0x00 },                               // 4-byte -> nop dword ptr [rax + 0x0]
+                        new byte[] { 0x0F, 0x1F, 0x00 },                                     // 3-byte -> nop dword ptr [rax]
+                        new byte[] { 0x66, 0x90 },                                           // 2-byte -> xchg ax, ax
+                        new byte[] { 0x90 }                                                  // 1-byte -> nop
                     };
 
                     bool shifted = false;
@@ -286,7 +286,6 @@ namespace AstralPE.Obfuscator.Modules {
                         }
 
                     } while (foundAny);
-
 
                     // If not slid over NOPs, try mutating entrypoint stack alignment
                     if (!shifted && (isMinGwStyle || isVcStyle)) {
