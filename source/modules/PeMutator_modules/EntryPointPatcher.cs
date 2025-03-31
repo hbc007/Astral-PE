@@ -250,24 +250,37 @@ namespace AstralPE.Obfuscator.Modules {
                     raw[epOffset - 2] = instr[0];
                     raw[epOffset - 1] = instr[1];
                     epOffset -= 2;
-                } else if (space >= 2 || // If free space is 2 bytes, inject 1-byte NOP
-                          (raw[epOffset - 6] == 0xE8) && raw[epOffset - 1] == 0xCC) { // Microsoft VC++ 19.36.33523, 32-bit support; CALL + 0xCC, we can change last byte
-
-                    raw[epOffset - 1] = 0x90;
-                    epOffset -= 1;
                 } else { // If no free space
 
-                    // Try to slide EntryPoint back over multiple consecutive NOP sleds
-                    byte[][] knownNops = [
-                        [0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00], // 9-byte -> nop dword ptr [rax + rax*1 + 0x0]
-                        [0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00],       // 8-byte -> nop dword ptr [rax + rax*1 + 0x0]
-                        [0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00],             // 7-byte -> nop dword ptr [rax + 0x0]
-                        [0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00],                   // 6-byte -> nop word ptr [rax + rax*1 + 0x0]
-                        [0x0F, 0x1F, 0x44, 0x00, 0x00],                         // 5-byte -> nop dword ptr [rax + 0x0]
-                        [0x0F, 0x1F, 0x40, 0x00],                               // 4-byte -> nop dword ptr [rax + 0x0]
-                        [0x0F, 0x1F, 0x00],                                     // 3-byte -> nop dword ptr [rax]
-                        [0x66, 0x90],                                           // 2-byte -> xchg ax, ax
-                        [0x90]                                                  // 1-byte -> nop
+                    // Try to slide EntryPoint over known safe instructions
+                    byte[][] knownSafeOps = [
+                        // 1. No operations
+                        [0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00], // nop dword ptr [rax + rax*1 + 0x0]
+                        [0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00],       // nop dword ptr [rax + rax*1 + 0x0]
+                        [0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00],             // nop dword ptr [rax + 0x0]
+                        [0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00],                   // nop word ptr [rax + rax*1 + 0x0]
+                        [0x0F, 0x1F, 0x44, 0x00, 0x00],                         // nop dword ptr [rax + 0x0]
+                        [0x0F, 0x1F, 0x40, 0x00],                               // nop dword ptr [rax + 0x0]
+                        [0x0F, 0x1F, 0x00],                                     // nop dword ptr [rax]
+                        [0x66, 0x90],                                           // xchg ax, ax
+                        [0x90],                                                 // nop
+                        // 2. Fake operations
+                        [0x8D, 0x1C, 0x00],  [0x8D, 0x40, 0x00],                // lea ebx, [eax + eax];  lea eax, [eax]
+                        [0x8D, 0x48, 0x00],  [0x8D, 0x50, 0x00],                // lea ecx, [eax];        lea edx, [eax]
+                        [0x31, 0xC0],        [0x31, 0xC9],                      // xor eax, eax;          xor ecx, ecx
+                        [0x31, 0xD2],        [0x31, 0xDB],                      // xor edx, edx;          xor ebx, ebx
+                        [0x29, 0xC0],        [0x29, 0xC9],                      // sub eax, eax;          sub ecx, ecx
+                        [0x89, 0xC0],        [0x89, 0xD2],                      // mov eax, eax;          mov edx, edx
+                        [0x89, 0xDB],        [0x85, 0xC0],                      // mov ebx, ebx;          test eax, eax
+                        [0x87, 0xD1],        [0x87, 0xDB],                      // xchg edx, ecx;         xchg ebx, ebx
+                        [0x87, 0xC0],        [0x21, 0xC0],                      // xchg eax, eax;         and eax, eax
+                        [0x09, 0xC0],        [0x50],                            // or eax, eax;           push eax
+                        [0x51],              [0x52],                            // push ecx;              push edx
+                        [0x53],              [0x55],                            // push ebx;              push ebp
+                        [0x58],              [0x59],                            // pop eax;               pop ecx
+                        [0x5A],              [0x5B],                            // pop edx;               pop ebx
+                        [0x5D],              [0x9C],                            // pop ebp;               pushfd
+                        [0x9D]                                                  // popfd
                     ];
 
                     bool shifted = false,
@@ -276,19 +289,19 @@ namespace AstralPE.Obfuscator.Modules {
                     do {
                         foundAny = false;
 
-                        foreach (var nop in knownNops) {
-                            int len = nop.Length;
-                            if (epOffset >= len) {
+                        foreach (var nop in knownSafeOps) {
+                            int instructionLength = nop.Length;
+                            if (epOffset >= instructionLength) {
                                 bool match = true;
-                                for (int i = 0; i < len; i++) {
-                                    if (raw[epOffset - len + i] != nop[i]) {
+                                for (int i = 0; i < instructionLength; i++) {
+                                    if (raw[epOffset - instructionLength + i] != nop[i]) {
                                         match = false;
                                         break;
                                     }
                                 }
 
                                 if (match) {
-                                    epOffset -= (uint)len;
+                                    epOffset -= (uint)instructionLength;
                                     foundAny = true;
                                     shifted = true;
                                     break; // start again from new offset
