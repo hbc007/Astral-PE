@@ -61,10 +61,6 @@ namespace AstralPE.Obfuscator.Modules {
                 0xF8, // CLC
                 0xF9, // STC
                 0xFC, // CLD
-                0xF3, // REP
-                0xF2, // REPNE
-                0x64, // FS override
-                0x65  // GS override
             } : new List<byte> {
                 // PUSH rAX–rDI (0x50–0x57), without 0x54 (PUSH rSP)
                 0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57,
@@ -85,14 +81,10 @@ namespace AstralPE.Obfuscator.Modules {
                 0x3F, // AAS
                 0x61, // POPAD
                 0x9C, // PUSHFD
-                0xF3, // REP
-                0xF2, // REPNE
                 0x2E, // CS
                 0x36, // SS
                 0x3E, // DS
                 0x26, // ES
-                0x64, // FS
-                0x65  // GS
             };
 
             // Randomly patch or remove 0x60 (PUSHAD/PUSHAL)
