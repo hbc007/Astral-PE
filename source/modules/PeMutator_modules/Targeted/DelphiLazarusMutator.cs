@@ -49,16 +49,16 @@ namespace AstralPE.Obfuscator.Modules {
                 throw new InvalidPeImageException();
 
             // Check for the presence of .bss or .CRT sections
-            bool markersFound = false;
+            int markersFound = 0;
             for (int i = 0; i < pe.ImageSectionHeaders.Length; i++) {
                 string name = pe.ImageSectionHeaders[i].Name;
                 if (name == ".bss" || name == ".CRT") {
-                    markersFound = true;
+                    markersFound++;
                     break;
                 }
             }
 
-            if (!markersFound) // No Delphi/Lazarus sections found
+            if (markersFound != 2) // No Delphi/Lazarus sections found
                 return;
 
             ImageSectionHeader? rdataSection = null;
