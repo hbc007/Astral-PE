@@ -166,7 +166,7 @@ namespace AstralPE.Obfuscator.Modules {
             }
 
             // 1. If free space is available, inject a short obfuscation sequence
-            // 2. If not -> slide over known NOP sleds
+            // 2. If not -> slide over known NOP pattern
             // 3. If not -> mutate entrypoint stack alignment
 
             // EntryPoint shift mutation w/ multi-level obfuscation (5/2/1-byte options)
