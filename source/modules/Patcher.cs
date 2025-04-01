@@ -76,9 +76,10 @@ namespace AstralPE.Obfuscator.Modules {
             if (pattern.Length == 0 || replacement.Length == 0 || data.Length < section.PointerToRawData + pattern.Length)
                 return;
 
-            int len = pattern.Length;
-            int start = (int)section.PointerToRawData;
-            int end = Math.Min(data.Length - len, (int)(section.PointerToRawData + section.SizeOfRawData - len));
+            int len = pattern.Length,
+                start = (int)section.PointerToRawData,
+                end = Math.Min(data.Length - len, (int)(section.PointerToRawData + section.SizeOfRawData - len
+
             ConcurrentBag<int> matches = new ConcurrentBag<int>();
 
             Parallel.ForEach(Partitioner.Create(start, end, 8192), range => {
