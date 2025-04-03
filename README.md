@@ -78,7 +78,12 @@ Use Astral-PE **after** applying protectors.
 Chain it into your CI, cryptor, or loader pipeline:
 
 ```
-Build → Any packer → AstralPE → Sign / Pack → Distribute
+Build → Any packer → Astral-PE → Sign → Distribute
+```
+
+Or (A more effective way):
+```
+Build → Astral-PE → Any packer → Astral-PE → Sign → Distribute
 ```
 
 ## 🔬 What it’s not
