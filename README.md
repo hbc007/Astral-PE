@@ -62,10 +62,9 @@ Astral-PE applies precise, compliant, and execution-safe mutations:
 Astral-PE.exe <input.exe> -o <output.exe>
 ```
 
-- `-o`, `--output` — output file name (optional)
-- Default output: `<input>_ast.exe`
+- `-o`, `--output` — output file name (optional). Default output: `<input>_ast.exe`
+- `-l`, `--legacy-win-compat-mode` — specify to ensure compatibility with Windows 7, 8, or 8.1. **Obfuscation will be less effective!** 
 - No args? Shows help
-
 
 ## 🧪 Example
 
@@ -91,7 +90,7 @@ Build → Any packer → AstralPE → Sign / Pack → Distribute
 
 It’s a **surgical metadata cleaner** and **PE-headers/entrypoint obfuscator** for post-processing protected binaries.
 
-## Before and after
+## 🔎 Before and after
 A file compiled via Microsoft Visual C++ was chosen as a sample for demonstration.
 
 > ### File analyzers go crazy.
