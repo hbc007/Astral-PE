@@ -27,6 +27,7 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
+using Astral_PE.modules;
 using PeNet;
 using System.Text;
 
@@ -82,13 +83,15 @@ namespace AstralPE.Obfuscator.Modules {
                 // Randomize character casing of the DLL name
                 string mutated = StringsWorker.RandomizeCase(dll);
 
-                // Optionally prepend random path-like prefix
-                if (hasDllExtension && !dll.StartsWith("api-ms-win-", StringComparison.OrdinalIgnoreCase)) {
-                    string[] sep = { "./", ".\\" };
-                    string prefix = sep[rnd.Next(sep.Length)];
-                    if (rnd.Next(2) == 0)
-                        prefix += sep[rnd.Next(sep.Length)];
-                    mutated = prefix + mutated;
+                if (!PeMutator.LegacyWinCompatMode) { // Not for Windows 7 / 8
+                    // Optionally prepend random path-like prefix
+                    if (hasDllExtension && !dll.StartsWith("api-ms-win-", StringComparison.OrdinalIgnoreCase)) {
+                        string[] sep = ["./", ".\\"];
+                        string prefix = sep[rnd.Next(sep.Length)];
+                        if (rnd.Next(2) == 0)
+                            prefix += sep[rnd.Next(sep.Length)];
+                        mutated = prefix + mutated;
+                    }
                 }
 
                 // Encode back to ASCII with null terminator

@@ -51,7 +51,7 @@ namespace AstralPE.Obfuscator.Modules {
 
             // Try to wipe OriginalFilename from end of file
 
-            FileVersionInfo? verInfo = FileVersionInfo.GetVersionInfo(PeMutator.selectedFilePath);
+            FileVersionInfo? verInfo = FileVersionInfo.GetVersionInfo(PeMutator.SelectedFilePath);
             if (!string.IsNullOrEmpty(verInfo.OriginalFilename)) {
                 string orig = verInfo.OriginalFilename;
                 byte[] value = Encoding.Unicode.GetBytes(orig + "\0"); // UTF-16 null-terminated

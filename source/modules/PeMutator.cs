@@ -27,10 +27,9 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
-using System;
-using System.Collections.Generic;
-using PeNet;
+using Astral_PE.modules;
 using AstralPE.Obfuscator.Modules;
+using PeNet;
 
 namespace AstralPE.Obfuscator {
     public class PeMutator {
@@ -42,9 +41,10 @@ namespace AstralPE.Obfuscator {
         private readonly int optStart;
         private readonly int sectionTableOffset;
 
-        private readonly List<IAstralPeModule> modules = new();
+        private readonly List<IAstralPeModule> modules = [];
 
-        public static string selectedFilePath = String.Empty;
+        public static string SelectedFilePath { get; private set; } = string.Empty;
+        public static bool LegacyWinCompatMode { get; private set; } = false;
 
         /// <summary>
         /// Initializes the PE obfuscator and computes important header offsets.
@@ -52,8 +52,9 @@ namespace AstralPE.Obfuscator {
         /// <param name="raw">Raw byte array of the PE file.</param>
         /// <param name="pe">Parsed PE structure.</param>
         /// <param name="rnd">Random number generator instance.</param>
-        public PeMutator(byte[] raw, PeFile pe, Random rnd, string _selectedFilePath) {
-            selectedFilePath = _selectedFilePath;
+        public PeMutator(byte[] raw, PeFile pe, Random rnd, string _selectedFilePath, bool _legacyWinCompatMode) {
+            SelectedFilePath = _selectedFilePath;
+            LegacyWinCompatMode = _legacyWinCompatMode;
 
             this.raw = raw ?? throw new ArgumentNullException(nameof(raw));
             this.pe = pe ?? throw new ArgumentNullException(nameof(pe));

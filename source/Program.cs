@@ -27,6 +27,7 @@
  * https://github.com/DosX-dev/Astral-PE
  */
 
+using Astral_PE.modules;
 using AstralPE.Obfuscator;
 using PeNet;
 
@@ -36,6 +37,9 @@ namespace AstralPE {
     /// Handles command-line arguments, performs obfuscation, and saves the modified PE file.
     /// </summary>
     class Program {
+        // Initialize the random number generator for any random operations.
+        private readonly static Random rnd = new();
+
         /// <summary>
         /// Main method of the application. It handles command-line input, performs obfuscation,
         /// and saves the resulting obfuscated PE file.
@@ -55,12 +59,16 @@ namespace AstralPE {
 
             // If no arguments are provided or the user asks for help, show the usage message.
             if (args.Length == 0 || args.Contains("-h") || args.Contains("--help")) {
-                Logging.Write("/CLR(CYAN)[?] /CLR(WHITE)Usage: /CLR(YELLOW)<input.exe|dll> [-o|--output <output.exe|dll>]");
+                Logging.Write("/CLR(CYAN)[?] /CLR(WHITE)Usage: /CLR(YELLOW)<input.exe|dll> [-o|--output <output.exe|dll>] [-l|--legacy-win-compat-mode]\n" +
+                              "/CLR(DARKGRAY)    Specify /CLR(DARKYELLOW)--legacy-win-compat-mode/CLR(DARKGRAY) to ensure compatibility with Windows 7, 8, or 8.1.");
                 return;
             }
 
             // Extract input file path from command-line arguments.
             string inputPath = args[0];
+
+            // Check if the user wants to enable legacy compatibility mode.
+            bool legacyWinCompatMode = false;
 
             // Check if the input file exists.
             if (!File.Exists(inputPath)) {
@@ -75,12 +83,17 @@ namespace AstralPE {
             );
 
             // Check if the user provided a custom output path via -o or --output arguments.
-            for (int i = 1; i < args.Length - 1; i++) {
-                if (args[i] == "-o" || args[i] == "--output") {
+            for (int i = 0; i < args.Length; i++) {
+                if ((args[i] == "-o" || args[i] == "--output") && i + 1 < args.Length) {
                     outputPath = args[i + 1];
-                    break;
+                    i++;
+                } else if (args[i] == "-l" || args[i] == "--legacy-win-compat-mode") {
+                    legacyWinCompatMode = true;
+                } else if (i > 0) {
+                    Logging.Write("/CLR(DARKGRAY)[?] Specified flag /CLR(GRAY)" + args[i] + "/CLR(DARKGRAY) is not valid.");
                 }
             }
+
 
 
             try {
@@ -88,16 +101,17 @@ namespace AstralPE {
                 byte[] raw = File.ReadAllBytes(inputPath);
 
                 // Create a PeFile object for PE file parsing and manipulation.
-                PeFile pe = new PeFile(raw);
-
-                // Initialize the random number generator for any random operations.
-                Random rnd = new Random();
+                PeFile pe = new(raw);
 
                 // Log the start of the obfuscation process.
                 Logging.Write("/CLR(CYAN)[@] /CLR(WHITE)Obfuscating: /CLR(GRAY)" + inputPath);
 
+                if (legacyWinCompatMode) {
+                    Logging.Write("/CLR(DARKYELLOW)[!] Compatibility mode with older versions of Windows is enabled.\n    /CLR(RED)Obfuscation will be less effective!/CLR(DARKYELLOW) Keep this in mind.");
+                }
+
                 // Create a PeObfuscator instance and apply obfuscation.
-                PeMutator? obfuscator = new PeMutator(raw, pe, rnd, inputPath);
+                PeMutator? obfuscator = new(raw, pe, rnd, inputPath, legacyWinCompatMode);
                 raw = obfuscator.Apply();
 
                 try {
