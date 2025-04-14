@@ -1,4 +1,4 @@
-ï»¿/*
+/*
  * This file is part of the Astral-PE project.
  * Copyright (c) 2025 DosX. All rights reserved.
  *
@@ -19,12 +19,6 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- *
- * Astral-PE is a low-level post-compilation PE header mutator (obfuscator) for native
- * Windows x86/x64 binaries. It modifies structural metadata while preserving execution integrity.
- *
- * For source code, updates, and documentation, visit:
- * https://github.com/DosX-dev/Astral-PE
  */
 
 using PeNet;
@@ -32,10 +26,10 @@ using PeNet.Header.Pe;
 using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class DelphiLazarusMutator : IAstralPeModule {
+    public class FreePascalCompilerMutator : IAstralPeModule {
 
         /// <summary>
-        /// Applies Delphi/Lazarus meta data cleanup to the PE file.
+        /// Applies Free Pascal Compiler (FPC) specific metadata cleanup to the PE file.
         /// </summary>
         /// <param name="raw">The raw byte array of the PE file.</param>
         /// <param name="pe">The parsed PE structure.</param>
@@ -44,62 +38,63 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">The offset of the section table.</param>
         /// <param name="rnd">Random number generator instance.</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            // Ensure the section headers are present
+            // Ensure section headers are present
             if (pe.ImageSectionHeaders == null)
-                throw new InvalidPeImageException();
+                return;
 
             // Check for the presence of .bss or .CRT sections
             int markersFound = 0;
             for (int i = 0; i < pe.ImageSectionHeaders.Length; i++) {
                 string name = pe.ImageSectionHeaders[i].Name;
-                if (name == ".bss" || name == ".CRT") {
+                if (name == ".bss" || name == ".CRT")
                     markersFound++;
-                    break;
-                }
             }
 
-            if (markersFound != 2) // No Delphi/Lazarus sections found
+            if (markersFound == 0) // No marker sections found – nothing to do
                 return;
 
-            string[] exactMatches = new string[] {
-                "Property streamed in older Lazarus revision",
-                "Used in a previous version of Lazarus"
-            };
+            // Process both .rdata and .data sections for FPC strings
+            for (int idx = 0; idx < pe.ImageSectionHeaders.Length; idx++) {
+                ImageSectionHeader section = pe.ImageSectionHeaders[idx];
+                if (section.Name != ".rdata" && section.Name != ".data")
+                    continue;
 
-            string[] prefixMatches = new string[] {
-                "TLazWriterTiff - Lazarus LCL: ",
-                "TTiffImage - Lazarus LCL: "
-            };
+                // Ensure the section is valid
+                if (section.PointerToRawData == 0 || section.SizeOfRawData == 0)
+                    continue;
 
-            // Remove exact matches in the whole file
-            for (int i = 0; i < exactMatches.Length; i++) {
-                byte[] pattern = Encoding.ASCII.GetBytes(exactMatches[i]);
-                int index = Patcher.IndexOf(raw, pattern, 0);
+                int sectionStart = (int)section.PointerToRawData,
+                    sectionSize = (int)section.SizeOfRawData;
 
-                while (index != -1) {
-                    int end = index;
-                    while (end < raw.Length && raw[end] != 0)
-                        end++;
-                    for (int j = index; j < end; j++)
-                        raw[j] = 0;
-                    index = Patcher.IndexOf(raw, pattern, end);
+                if (sectionStart + sectionSize > raw.Length)
+                    throw new IndexOutOfRangeException("Section data goes beyond file bounds.");
+
+                byte[] sectionData = new byte[sectionSize];
+                Array.Copy(raw, sectionStart, sectionData, 0, sectionSize);
+
+                byte[] fpcPattern = Encoding.ASCII.GetBytes("FPC");
+                int pos = Patcher.IndexOf(sectionData, fpcPattern, 0);
+
+                // Clear all null-terminated strings that contain "FPC"
+                while (pos != -1) {
+
+                    int strStart = pos;
+                    while (strStart > 0 && sectionData[strStart - 1] != 0)
+                        strStart--;
+
+                    int strEnd = pos;
+                    while (strEnd < sectionData.Length && sectionData[strEnd] != 0)
+                        strEnd++;
+
+                    string s = Encoding.ASCII.GetString(sectionData, strStart, strEnd - strStart);
+                    if (s.Contains("FPC")) {
+                        for (int j = strStart; j < strEnd; j++)
+                            sectionData[j] = 0;
+                    }
+                    pos = Patcher.IndexOf(sectionData, fpcPattern, strEnd);
                 }
-            }
 
-            // Remove prefix matches in the whole file
-            for (int i = 0; i < prefixMatches.Length; i++) {
-                byte[] prefixPattern = Encoding.ASCII.GetBytes(prefixMatches[i]);
-                int index = Patcher.IndexOf(raw, prefixPattern, 0);
-
-                while (index != -1) {
-                    int end = index;
-                    while (end < raw.Length && raw[end] != 0)
-                        end++;
-                    for (int j = index; j < end; j++)
-                        raw[j] = 0;
-                    
-                    index = Patcher.IndexOf(raw, prefixPattern, end);
-                }
+                Array.Copy(sectionData, 0, raw, sectionStart, sectionSize);
             }
         }
     }

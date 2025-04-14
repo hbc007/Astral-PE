@@ -52,11 +52,11 @@ namespace AstralPE.Obfuscator.Modules {
             if (epOffset >= raw.Length)
                 throw new Exception("EntryPoint offset is out of file bounds.");
 
-            List<byte> instructions = pe.Is64Bit ? new List<byte> {
+            List<byte> oneByteInstructions = pe.Is64Bit ? new List<byte> {
                 // PUSH rAX–rDI (0x50–0x57), without 0x54 (PUSH rSP)
                 0x50, 0x51, 0x52, 0x53, 0x55, 0x56, 0x57,
 
-                // Other x64-safe instructions
+                // Other x64-safe oneByteInstructions
                 0x90, // NOP
                 0xF8, // CLC
                 0xF9, // STC
@@ -71,7 +71,7 @@ namespace AstralPE.Obfuscator.Modules {
                 // DEC rAX–rDI (0x48–0x4F), without 0x4C (DEC rSP)
                 0x48, 0x49, 0x4A, 0x4B, 0x4D, 0x4E, 0x4F,
 
-                // Legacy single-byte x86 instructions
+                // Legacy single-byte x86 oneByteInstructions
                 0x90, // NOP
                 0xF8, // CLC
                 0xF9, // STC
@@ -93,11 +93,11 @@ namespace AstralPE.Obfuscator.Modules {
                     raw[epOffset] = 0xCC;
                     epOffset++;
                 } else { // Patch
-                    raw[epOffset] = instructions[rnd.Next(instructions.Count)];
+                    raw[epOffset] = oneByteInstructions[rnd.Next(oneByteInstructions.Count)];
                 }
             }
 
-            // Shuffle PUSH instructions in UPX64 signature
+            // Shuffle PUSH oneByteInstructions in UPX64 signature
             if (epOffset + 4 < raw.Length &&
                 raw[epOffset + 0] == 0x53 && raw[epOffset + 1] == 0x56 &&
                 raw[epOffset + 2] == 0x57 && raw[epOffset + 3] == 0x55) {
@@ -112,6 +112,25 @@ namespace AstralPE.Obfuscator.Modules {
 
                 for (int i = 0; i < pushes.Length; i++)
                     raw[epOffset + i] = pushes[i];
+            }
+
+            // Go-style JMP obfuscation (JMP + INT3 padding)
+            if (raw[epOffset] == 0xE9) {
+                uint i = epOffset + 5;
+                while (i < raw.Length && raw[i] == 0xCC) {
+                    raw[i] = (byte)rnd.Next(0x00, 0xFF);
+                    i++;
+                }
+            }
+
+            // Randomly patch or remove 0x55 (push ebx) for TCC
+            if (raw[epOffset] == 0x55 && raw[epOffset + 1] == 0x89 && raw[epOffset + 3] == 0x81) {
+                if (rnd.Next(2) == 0) { // Remove
+                    raw[epOffset] = 0xCC;
+                    epOffset++;
+                } else { // Patch
+                    raw[epOffset] = oneByteInstructions[rnd.Next(oneByteInstructions.Count)];
+                }
             }
 
             bool isVcStyle = false,
@@ -244,7 +263,7 @@ namespace AstralPE.Obfuscator.Modules {
                     epOffset -= 2;
                 } else { // If no free space
 
-                    // Try to slide EntryPoint over known safe instructions
+                    // Try to slide EntryPoint over known safe oneByteInstructions
                     byte[][] knownSafeOps = [
                         // 1. No operations
                         [0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00], // nop dword ptr [rax + rax*1 + 0x0]
@@ -256,6 +275,7 @@ namespace AstralPE.Obfuscator.Modules {
                         [0x0F, 0x1F, 0x00],                                     // nop dword ptr [rax]
                         [0x66, 0x90],                                           // xchg ax, ax
                         [0x90],                                                 // nop
+
                         // 2. Fake operations
                         [0x8D, 0x1C, 0x00],  [0x8D, 0x40, 0x00],                // lea ebx, [eax + eax];  lea eax, [eax]
                         [0x8D, 0x48, 0x00],  [0x8D, 0x50, 0x00],                // lea ecx, [eax];        lea edx, [eax]
@@ -264,15 +284,21 @@ namespace AstralPE.Obfuscator.Modules {
                         [0x29, 0xC0],        [0x29, 0xC9],                      // sub eax, eax;          sub ecx, ecx
                         [0x89, 0xC0],        [0x89, 0xD2],                      // mov eax, eax;          mov edx, edx
                         [0x89, 0xDB],        [0x85, 0xC0],                      // mov ebx, ebx;          test eax, eax
+                        [0x84, 0xC0],        [0x09, 0xC0],                      // test al, al;           or eax, eax
+                        [0x33, 0xC0],        [0x33, 0xC9],                      // xor eax, eax;          xor ecx, ecx
+                        [0x33, 0xD2],        [0x33, 0xDB],                      // xor edx, edx;          xor ebx, ebx
+                        [0x33, 0xF6],        [0x33, 0xFF],                      // xor esi, esi;          xor edi, edi
                         [0x87, 0xD1],        [0x87, 0xDB],                      // xchg edx, ecx;         xchg ebx, ebx
                         [0x87, 0xC0],        [0x21, 0xC0],                      // xchg eax, eax;         and eax, eax
-                        [0x09, 0xC0],        [0x50],                            // or eax, eax;           push eax
-                        [0x51],              [0x52],                            // push ecx;              push edx
-                        [0x53],              [0x55],                            // push ebx;              push ebp
-                        [0x58],              [0x59],                            // pop eax;               pop ecx
-                        [0x5A],              [0x5B],                            // pop edx;               pop ebx
-                        [0x5D],              [0x9C],                            // pop ebp;               pushfd
-                        [0x9D]                                                  // popfd
+                        [0x0F, 0xA2],        [0x0F, 0x31],                      // cpuid;                 rdtsc
+                        [0x50],              [0x51],                            // push eax;              push ecx
+                        [0x52],              [0x53],                            // push edx;              push ebx
+                        [0x55],              [0x58],                            // push ebp;              pop eax
+                        [0x59],              [0x5A],                            // pop ecx;               pop edx
+                        [0x5B],              [0x5D],                            // pop ebx;               pop ebp
+                        [0x9C],              [0x9D],                            // pushfd;                popfd
+                        [0xFC],              [0xF8],                            // cld;                   clc
+                        [0xF9]                                                  // stc
                     ];
 
                     bool shifted = false,

@@ -44,6 +44,7 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">Offset to the section table.</param>
         /// <param name="rnd">Random number generator (not used in this method).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
+            // Ensure section headers are present
             if (pe.ImageSectionHeaders == null)
                 throw new InvalidPeImageException();
 

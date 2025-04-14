@@ -45,6 +45,7 @@ namespace AstralPE.Obfuscator.Modules {
 
             int len = find.Length,
                 limit = data.Length - len;
+
             ConcurrentBag<int> matches = [];
 
             Parallel.ForEach(Partitioner.Create(0, limit, 8192), range => {
@@ -63,42 +64,6 @@ namespace AstralPE.Obfuscator.Modules {
 
             foreach (int index in matches.OrderBy(i => i)) {
                 Buffer.BlockCopy(replace, 0, data, index, Math.Min(replace.Length, len));
-            }
-        }
-
-        /// <summary>
-        /// Replaces all occurrences of a byte sequence within a PE section using parallel search.
-        /// </summary>
-        /// <param name="data">The buffer to search and replace in.</param>
-        /// <param name="section">The section to search and replace in.</param>
-        /// <param name="pattern">The byte sequence to find.</param>
-        public static void ReplaceBytesInSection(byte[] data, ImageSectionHeader section, byte[] pattern, byte[] replacement) {
-            if (pattern.Length == 0 || replacement.Length == 0 || data.Length < section.PointerToRawData + pattern.Length)
-                return;
-
-            int len = pattern.Length;
-            int start = (int)section.PointerToRawData;
-            int end = Math.Min(data.Length - len, (int)(section.PointerToRawData + section.SizeOfRawData - len));
-            ConcurrentBag<int> matches = [];
-
-            Parallel.ForEach(Partitioner.Create(start, end, 8192), range => {
-                for (int i = range.Item1; i < range.Item2; i++) {
-                    bool match = true;
-                    for (int j = 0; j < len; j++) {
-                        if (data[i + j] != pattern[j]) {
-                            match = false;
-                            break;
-                        }
-                    }
-                    if (match)
-                        matches.Add(i);
-                }
-            });
-
-            foreach (int index in matches.OrderBy(i => i)) {
-                for (int j = 0; j < len && j < replacement.Length; j++) {
-                    data[index + j] = replacement[j];
-                }
             }
         }
 

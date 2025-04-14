@@ -28,7 +28,7 @@
  */
 
 using PeNet;
-using System.Text;
+using PeNet.Header.Pe;
 
 namespace AstralPE.Obfuscator.Modules {
     public class LegacyVbCompilerMutator : IAstralPeModule {
@@ -43,7 +43,8 @@ namespace AstralPE.Obfuscator.Modules {
         /// <param name="sectionTableOffset">Offset to section table start.</param>
         /// <param name="rnd">Random instance (unused).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            if (pe.ImportedFunctions == null || pe.ImportedFunctions.Length == 0)
+            // Ensure section headers are present
+            if (pe.ImportedFunctions == null || pe.ImageSectionHeaders == null || pe.ImportedFunctions.Length == 0)
                 return;
 
             // Check for any import from VB5/6 runtimes
@@ -54,19 +55,36 @@ namespace AstralPE.Obfuscator.Modules {
             if (!isVB)
                 return;
 
-            // Look for a typical VB project path reference like:
-            // "C:\Program Files (x86)\Microsoft Visual Studio\VB98\VB6.OLB"
-            ReadOnlySpan<byte> marker = new byte[] { (byte)'V', (byte)'B', (byte)'6', (byte)'.', (byte)'O', (byte)'L', (byte)'B' };
-            Span<byte> span = raw;
-            int pos = span.IndexOf(marker);
-            while (pos != -1) {
-                int start = pos;
-                while (start > 0 && span[start - 1] != 0) start--;
-                int end = pos + marker.Length;
-                while (end < span.Length && span[end] != 0) end++;
-                for (int i = start; i < end; i++) span[i] = 0;
-                pos = span[end..].IndexOf(marker);
-                if (pos != -1) pos += end;
+            ReadOnlySpan<byte> marker = "VB6.OLB"u8;
+
+            for (int s = 0; s < pe.ImageSectionHeaders.Length; s++) {
+                ImageSectionHeader section = pe.ImageSectionHeaders[s];
+
+                int startOffset = (int)section.PointerToRawData;
+                int size = (int)section.SizeOfRawData;
+
+                if (startOffset == 0 || size == 0 || startOffset + size > raw.Length)
+                    continue;
+
+                ReadOnlySpan<byte> span = raw.AsSpan(startOffset, size);
+
+                int pos = span.IndexOf(marker);
+                while (pos != -1) {
+                    int strStart = startOffset + pos;
+                    while (strStart > startOffset && raw[strStart - 1] != 0)
+                        strStart--;
+
+                    int strEnd = startOffset + pos + marker.Length;
+                    while (strEnd < startOffset + size && raw[strEnd] != 0)
+                        strEnd++;
+
+                    for (int i = strStart; i < strEnd; i++)
+                        raw[i] = 0x00;
+
+                    pos = span.Slice(strEnd - startOffset).IndexOf(marker);
+                    if (pos != -1)
+                        pos += strEnd - startOffset;
+                }
             }
         }
     }

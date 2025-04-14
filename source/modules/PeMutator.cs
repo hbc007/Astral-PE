@@ -75,8 +75,10 @@ namespace AstralPE.Obfuscator {
         /// </summary>
         private void RegisterModules() {
             IAstralPeModule[]? targetedObfuscationModules = [
+                new FreePascalCompilerMutator(),
                 new LegacyVbCompilerMutator(),
                 new DelphiLazarusMutator(),
+                new GoCompilerMutator(),
                 new UpxPackerMutator()
             ];
 

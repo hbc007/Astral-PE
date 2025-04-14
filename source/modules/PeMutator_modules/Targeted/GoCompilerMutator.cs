@@ -28,47 +28,66 @@
  */
 
 using PeNet;
+using PeNet.Header.Pe;
+using System.Text;
 
 namespace AstralPE.Obfuscator.Modules {
-    public class PermissionsSetter : IAstralPeModule {
+    public class GoCompilerMutator : IAstralPeModule {
 
         /// <summary>
-        /// Applies full memory access flags (RWE + code) to all section headers in the PE file.
+        /// Removes the primary signature that the assembly build ID starts with.
         /// </summary>
-        /// <param name="raw">The raw byte buffer of the PE image.</param>
-        /// <param name="pe">The parsed PE structure.</param>
+        /// <param name="raw">The raw PE file bytes.</param>
+        /// <param name="pe">Parsed PE metadata object.</param>
         /// <param name="e_lfanew">Offset to IMAGE_NT_HEADERS.</param>
         /// <param name="optStart">Offset to IMAGE_OPTIONAL_HEADER.</param>
-        /// <param name="sectionTableOffset">Offset to section table start.</param>
-        /// <param name="rnd">Random generator (unused).</param>
+        /// <param name="sectionTableOffset">Offset to section headers.</param>
+        /// <param name="rnd">Random number generator (unused).</param>
         public void Apply(ref byte[] raw, PeFile pe, int e_lfanew, int optStart, int sectionTableOffset, Random rnd) {
-            // Ensure section headers are present
             if (pe.ImageSectionHeaders == null || pe.ImageSectionHeaders.Length == 0)
                 throw new InvalidPeImageException();
 
-            const int sectionHeaderSize = 40,         // IMAGE_SECTION_HEADER size is 40 bytes
-                      characteristicsOffset = 36;     // Characteristics field offset within IMAGE_SECTION_HEADER
-
-            // Define the new permissions:
-            // R = Read, W = Write, E = Execute, + mark as code section
-            const uint perms = (uint)(
-                PeNet.Header.Pe.ScnCharacteristicsType.MemRead |
-                PeNet.Header.Pe.ScnCharacteristicsType.MemWrite |
-                PeNet.Header.Pe.ScnCharacteristicsType.MemExecute |
-                PeNet.Header.Pe.ScnCharacteristicsType.CntCode);
-
-            // Loop through all section headers
+            int markersFound = 0;
             for (int i = 0; i < pe.ImageSectionHeaders.Length; i++) {
-                // Calculate the start offset of the current section header
-                int sectionOffset = sectionTableOffset + i * sectionHeaderSize;
-
-                // Ensure we won't go out of bounds when writing the 4-byte value
-                if (sectionOffset + characteristicsOffset + 4 > raw.Length)
-                    throw new ArgumentOutOfRangeException(nameof(raw), "Section header characteristics offset exceeds file bounds.");
-
-                // Overwrite the Characteristics field with our RWE + Code flags
-                BitConverter.GetBytes(perms).CopyTo(raw, sectionOffset + characteristicsOffset);
+                string name = pe.ImageSectionHeaders[i].Name;
+                if (name == ".symtab" || name == ".reloc")
+                    markersFound++;
             }
+
+            if (markersFound != 2)
+                return;
+
+            ImageSectionHeader? first = pe.ImageSectionHeaders[0];
+
+            if (first.PointerToRawData == 0 || first.SizeOfRawData == 0)
+                return;
+
+            int start = (int)first.PointerToRawData,
+                size = (int)first.SizeOfRawData;
+
+            if (start + size > raw.Length)
+                throw new IndexOutOfRangeException("Section data goes beyond file bounds.");
+
+            ReadOnlySpan<byte> pattern = Encoding.ASCII.GetBytes(" Go build ID: ");
+            ReadOnlySpan<byte> span = raw.AsSpan(start, size);
+
+            int pos = span.IndexOf(pattern);
+            if (pos == -1)
+                return;
+
+            int absPos = start + pos;
+            int strStart = absPos;
+
+            // Expand left to start of string if not null-terminated
+            while (strStart > start && raw[strStart - 1] != 0)
+                strStart--;
+
+            int strEnd = absPos + pattern.Length;
+            while (strEnd < start + size && raw[strEnd] != 0)
+                strEnd++;
+
+            for (int i = strStart; i < strEnd; i++)
+                raw[i] = 0x00;
         }
     }
 }
